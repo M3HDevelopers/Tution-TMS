@@ -1,5 +1,7 @@
-import type { DataState, FeeRecord, FeeStatus, Payment, Student } from "../types";
-import { clampDay, currentPeriod, daysBetween, monthKeyOf, periodLabel, todayISO, uid } from "./utils";
+import type { DataState, FeeRecord, Payment, Student } from "../types";
+import { clampDay, daysBetween, monthKeyOf, periodLabel, todayISO, uid } from "./utils";
+
+export type FeeStatus = "upcoming" | "due" | "partial" | "paid" | "overdue" | "waived";
 
 export const chargeOf = (r: FeeRecord) => (r.waived ? 0 : r.baseFee + r.lateFee + r.adjustment);
 
@@ -7,7 +9,7 @@ export function paidOf(payments: Payment[], feeRecordId: string): number {
   return payments.filter((p) => p.feeRecordId === feeRecordId && p.state !== "voided").reduce((s, p) => s + p.amount, 0);
 }
 
-/** Balance of a single fee record, floored at 0 (overpayments do not create negatives). */
+/** Balance floored at 0 — overpayments never create negative dues. */
 export function balanceOf(r: FeeRecord, payments: Payment[]): number {
   return Math.max(0, chargeOf(r) - paidOf(payments, r.id));
 }
@@ -24,22 +26,13 @@ export function statusOf(r: FeeRecord, payments: Payment[], graceDays: number, t
 }
 
 export const FEE_STATUS_LABEL: Record<FeeStatus, string> = {
-  upcoming: "Upcoming",
-  due: "Due",
-  partial: "Partially Paid",
-  paid: "Paid",
-  overdue: "Overdue",
-  waived: "Waived",
+  upcoming: "Upcoming", due: "Due", partial: "Partially Paid", paid: "Paid", overdue: "Overdue", waived: "Waived",
 };
 
-/** Total outstanding across all periods for a student. */
 export function studentOutstanding(state: DataState, studentId: string): number {
-  return state.feeRecords
-    .filter((r) => r.studentId === studentId)
-    .reduce((s, r) => s + balanceOf(r, state.payments), 0);
+  return state.feeRecords.filter((r) => r.studentId === studentId).reduce((s, r) => s + balanceOf(r, state.payments), 0);
 }
 
-/** Unpaid amount from periods strictly before the given one. */
 export function previousBalance(state: DataState, studentId: string, period: string): number {
   return state.feeRecords
     .filter((r) => r.studentId === studentId && r.period < period)
@@ -71,7 +64,7 @@ export function nextDue(state: DataState, studentId: string): { period: string; 
   return { period: last.period, dueDate: last.dueDate, balance: 0, status: statusOf(last, state.payments, state.settings.feePolicy.graceDays) };
 }
 
-/** Idempotent monthly generation + one-time late-fee application. Returns new array only when changed. */
+/** Idempotent monthly generation + one-time late-fee application. */
 export function ensureFeeRecords(state: DataState, today = todayISO()): { records: FeeRecord[]; added: number; late: number } {
   const period = monthKeyOf(today);
   const policy = state.settings.feePolicy;
@@ -83,7 +76,7 @@ export function ensureFeeRecords(state: DataState, today = todayISO()): { record
   for (const s of state.students) {
     if (s.status !== "active") continue;
     if (records.some((r) => r.studentId === s.id && r.period === period)) continue;
-    const dueDay = s.dueDay || policy.dueDay;
+    const dueDay = s.feeDueDay || policy.dueDay || 1;
     missing.push({
       id: uid("fee"),
       studentId: s.id,
@@ -120,6 +113,13 @@ export function receiptNo(payments: Payment[]): string {
     return Number.isFinite(n) && n > m ? n : m;
   }, 1000);
   return `RCP-${max + 1}`;
+}
+
+/** Stable unique challan number per fee record (CHL-1001 …). */
+export function challanNo(records: FeeRecord[], recordId: string): string {
+  const sorted = [...records].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  const i = sorted.findIndex((r) => r.id === recordId);
+  return `CHL-${1001 + (i >= 0 ? i : sorted.length)}`;
 }
 
 /* ---------- aggregates ---------- */
@@ -203,10 +203,7 @@ export function agingBuckets(state: DataState): { label: string; amount: number;
     const d = daysBetween(r.dueDate, today);
     if (d <= 0) continue;
     const bk = buckets.find((x) => d >= x.min && d <= x.max);
-    if (bk) {
-      bk.amount += b;
-      bk.count++;
-    }
+    if (bk) { bk.amount += b; bk.count++; }
   }
   return buckets;
 }
@@ -220,4 +217,6 @@ export function collectionByPeriod(state: DataState, n = 6): { period: string; l
   return periods.map((p) => ({ period: p, label: periodLabel(p, true), amount: monthCollected(state.payments, p) }));
 }
 
-export { currentPeriod };
+export function currentPeriod(): string {
+  return monthKeyOf(todayISO());
+}

@@ -1,281 +1,273 @@
-import React, { useEffect, useMemo, useState } from "react";
-import PaymentModal from "../components/PaymentModal";
-import { useNav } from "../components/Shell";
-import { Avatar, Badge, Btn, Confirm, EmptyState, FeeStatusBadge, Icon, IconBtn, Modal, PageHead, SearchBox, Stat, TInput, TSelect, useToast } from "../components/ui";
-import { balanceOf, chargeOf, currentPeriod, ensureFeeRecords, paidOf, periodStats, previousBalance, statusOf } from "../lib/fee";
+import React, { useMemo, useState } from "react";
+import { useNav, useUi } from "../components/Shell";
+import { Avatar, Badge, Btn, Confirm, EmptyState, FeeStatusBadge, Icon, IconBtn, PageHead, Stat, Tabs, TSelect, useToast } from "../components/ui";
+import { balanceOf, challanNo, chargeOf, monthCollected, paidOf, periodStats, statusOf, type FeeStatus } from "../lib/fee";
 import { useStore, withActivity } from "../lib/store";
-import { fmtDate, fmtMoney, lastNPeriods, num, periodLabel } from "../lib/utils";
-import type { FeeRecord, FeeStatus } from "../types";
+import { currentPeriod, fmtDate, fmtMoney, lastNPeriods, naturalCompare, periodLabel, todayISO } from "../lib/utils";
 
 export default function Fees() {
   const { state, patch } = useStore();
-  const { nav, route } = useNav();
+  const { route, nav } = useNav();
+  const ui = useUi();
   const toast = useToast();
   const df = state.settings.dateFormat;
   const cur = state.settings.feePolicy.currency;
   const grace = state.settings.feePolicy.graceDays;
 
-  const [period, setPeriod] = useState(currentPeriod());
-  const [fStatus, setFStatus] = useState<"all" | FeeStatus>(route.params?.filter === "partial" ? "partial" : "all");
-  const [fBatch, setFBatch] = useState("all");
-  const [q, setQ] = useState("");
-  const [payOpen, setPayOpen] = useState(route.params?.pay === "1");
-  const [payStudent, setPayStudent] = useState<string | undefined>(route.params?.student);
-  const [detail, setDetail] = useState<FeeRecord | null>(null);
-  const [adjust, setAdjust] = useState("");
+  const [tab, setTab] = useState<"board" | "receipts">((route.params?.tab as "board" | "receipts") ?? "board");
+  const [period, setPeriod] = useState(route.params?.period ?? currentPeriod());
+  const [filter, setFilter] = useState(route.params?.filter ?? "all");
+  const [cls, setCls] = useState("all");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [voidAsk, setVoidAsk] = useState<string | null>(null);
-  const [waiveAsk, setWaiveAsk] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (route.params?.student) setQ(state.students.find((s) => s.id === route.params!.student)?.name ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const refresh = (silent = false) => {
-    const res = ensureFeeRecords(state);
-    if (res.added > 0 || res.late > 0) {
-      const activity = withActivity({ ...state, feeRecords: res.records }, `Fee cycle refreshed — ${res.added} new record(s), ${res.late} late fee(s) applied.`, "fee");
-      patch({ feeRecords: res.records, activity });
-      if (!silent) toast.push(`${res.added} fee record(s) generated`);
-    } else if (!silent) {
-      toast.push("Fee records already up to date");
-    }
-  };
-  useEffect(() => { refresh(true); /* ensure current cycle on visit */ // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const recs = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return state.feeRecords
-      .filter((r) => r.period === period)
-      .filter((r) => {
-        const s = state.students.find((x) => x.id === r.studentId);
-        if (!s) return false;
-        if (s.status === "archived") return false;
-        if (fBatch !== "all" && !s.batchIds.includes(fBatch)) return false;
-        if (fStatus !== "all" && statusOf(r, state.payments, grace) !== fStatus) return false;
-        if (needle && !s.name.toLowerCase().includes(needle) && !s.grade.toLowerCase().includes(needle)) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        const rank = (r: FeeRecord) => {
-          const st = statusOf(r, state.payments, grace);
-          return st === "overdue" ? 0 : st === "partial" ? 1 : st === "due" ? 2 : 3;
-        };
-        return rank(a) - rank(b) || balanceOf(b, state.payments) - balanceOf(a, state.payments);
-      });
-  }, [state, period, fStatus, fBatch, q, grace]);
+  const [waiveRec, setWaiveRec] = useState<string | null>(null);
 
   const stats = periodStats(state, period);
-  const nameOf = (id: string) => state.students.find((s) => s.id === id);
+  const classes = useMemo(() => Array.from(new Set(state.students.map((s) => s.grade))).sort(naturalCompare), [state.students]);
 
-  /* detail modal helpers */
-  const detailRec = detail ? state.feeRecords.find((r) => r.id === detail.id) ?? null : null;
-  const detailStudent = detailRec ? nameOf(detailRec.studentId) : null;
-  const detailPayments = detailRec ? state.payments.filter((p) => p.feeRecordId === detailRec.id).sort((a, b) => b.date.localeCompare(a.date)) : [];
-  useEffect(() => {
-    if (detailRec) setAdjust(String(detailRec.adjustment));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail?.id]);
+  const rows = useMemo(() => {
+    const list = state.students
+      .filter((s) => s.status === "active" && (cls === "all" || s.grade === cls))
+      .map((s) => {
+        const rec = state.feeRecords.find((r) => r.studentId === s.id && r.period === period);
+        const bal = rec ? balanceOf(rec, state.payments) : 0;
+        const st: FeeStatus | "none" = rec ? statusOf(rec, state.payments, grace) : "none";
+        return { s, rec, bal, st };
+      })
+      .filter((r) => (filter === "all" ? true : r.st === filter));
+    const rank: Record<string, number> = { overdue: 0, due: 1, partial: 2, upcoming: 3, none: 4, paid: 5, waived: 6 };
+    return list.sort((a, b) => (rank[a.st] ?? 9) - (rank[b.st] ?? 9) || a.s.name.localeCompare(b.s.name));
+  }, [state, period, filter, cls, grace]);
 
-  const saveAdjust = () => {
-    if (!detailRec) return;
-    const v = num(adjust);
-    const feeRecords = state.feeRecords.map((r) => (r.id === detailRec.id ? { ...r, adjustment: v } : r));
-    patch({ feeRecords, activity: withActivity({ ...state, feeRecords }, `Adjustment set to ${fmtMoney(v, cur)} for ${detailStudent?.name} (${periodLabel(detailRec.period, true)}).`, "fee") });
-    toast.push("Adjustment saved");
+  const receipts = useMemo(
+    () => state.payments.filter((p) => p.state !== "voided" && p.date.slice(0, 7) === period).sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)),
+    [state.payments, period]
+  );
+
+  const voidPayment = (id: string) => {
+    const payments = state.payments.map((p) => (p.id === id ? { ...p, state: "voided" as const } : p));
+    const p = state.payments.find((x) => x.id === id);
+    patch({ payments, activity: withActivity({ ...state, payments }, `Payment ${p?.receiptNo} voided — balances recalculated.`, "fee") });
+    toast.push("Payment voided — balances recalculated");
   };
 
   const toggleWaive = () => {
-    if (!detailRec) return;
-    const feeRecords = state.feeRecords.map((r) => (r.id === detailRec.id ? { ...r, waived: !r.waived } : r));
-    patch({ feeRecords, activity: withActivity({ ...state, feeRecords }, `Fee ${detailRec.waived ? "restored" : "waived"} for ${detailStudent?.name} (${periodLabel(detailRec.period, true)}).`, "fee") });
-    toast.push(detailRec.waived ? "Waiver removed" : "Fee waived");
-    setWaiveAsk(false);
+    if (!waiveRec) return;
+    const rec = state.feeRecords.find((r) => r.id === waiveRec)!;
+    const feeRecords = state.feeRecords.map((r) => (r.id === waiveRec ? { ...r, waived: !r.waived, lateFee: 0, lateFeeApplied: false } : r));
+    patch({ feeRecords, activity: withActivity({ ...state, feeRecords }, `${rec.waived ? "Waiver removed" : "Fee waived"} for ${state.students.find((s) => s.id === rec.studentId)?.name} (${periodLabel(rec.period)}).`, "fee") });
+    toast.push(rec.waived ? "Waiver removed" : "Fee waived");
   };
 
-  const voidPayment = (pid: string) => {
-    const p = state.payments.find((x) => x.id === pid);
-    if (!p) return;
-    const payments = state.payments.map((x) => (x.id === pid ? { ...x, state: "voided" as const } : x));
-    patch({ payments, activity: withActivity({ ...state, payments }, `Payment ${p.receiptNo} voided — ${fmtMoney(p.amount, cur)}.`, "payment") });
-    toast.push("Payment voided", "warn");
-  };
-
-  const chips: { key: "all" | FeeStatus; label: string; n: number }[] = [
-    { key: "all", label: "All", n: state.feeRecords.filter((r) => r.period === period).length },
-    { key: "overdue", label: "Overdue", n: stats.counts.overdue },
-    { key: "due", label: "Due", n: stats.counts.due },
-    { key: "partial", label: "Partially Paid", n: stats.counts.partial },
-    { key: "paid", label: "Paid", n: stats.counts.paid },
-    { key: "waived", label: "Waived", n: stats.counts.waived },
-  ];
+  const nameOf = (id: string) => state.students.find((s) => s.id === id)?.name ?? "Unknown";
 
   return (
     <div>
-      <PageHead title="Fees & Payments" sub={`Cycle starts day ${state.settings.feePolicy.cycleStartDay} · due day ${state.settings.feePolicy.dueDay} · ${grace}-day grace · late fee ${fmtMoney(state.settings.feePolicy.lateFee, cur)}`}
+      <PageHead title="Fees & Payments" sub="Big challan once a month for dues — small receipts every time money comes in"
         actions={<>
-          <Btn variant="outline" icon="refresh" onClick={() => refresh()}>Refresh Cycle</Btn>
-          <Btn variant="gold" icon="plus" onClick={() => { setPayStudent(undefined); setEditingPayment(undefined); setPayOpen(true); }}>Record Payment</Btn>
+          <TSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="!w-auto min-w-44">
+            {lastNPeriods(12).map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
+          </TSelect>
+          <Btn variant="gold" icon="plus" onClick={() => ui.openPayment()}>Record Payment</Btn>
         </>} />
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 stagger mb-5">
-        <Stat label={`Charged · ${periodLabel(period, true)}`} value={fmtMoney(stats.charged, cur)} sub={`${chips[0].n} fee records`} icon="fees" tone="navy" />
-        <Stat label="Collected for Period" value={fmtMoney(stats.collected, cur)} sub={stats.charged > 0 ? `${Math.min(100, Math.round((stats.collected / stats.charged) * 100))}% of charges` : "—"} icon="wallet" tone="gold" />
-        <Stat label="Outstanding" value={fmtMoney(stats.outstanding, cur)} sub={`${stats.counts.overdue} overdue · ${stats.counts.due + stats.counts.partial} pending`} icon="alert" tone="red" />
-        <Stat label="Fully Paid" value={stats.counts.paid} sub={`${stats.counts.waived} waived`} icon="check" tone="green" />
+      <div className="mb-5"><Tabs value={tab} onChange={(k) => setTab(k as "board" | "receipts")} tabs={[
+        { key: "board", label: "Fee Board", icon: "fees" },
+        { key: "receipts", label: `Receipts (${receipts.length})`, icon: "receipt" },
+      ]} /></div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 mb-5 stagger">
+        <Stat label="Collected" value={fmtMoney(monthCollected(state.payments, period), cur)} sub={periodLabel(period)} icon="wallet" tone="gold" />
+        <Stat label="Charged" value={fmtMoney(stats.charged, cur)} sub={`${stats.counts.paid + stats.counts.partial + stats.counts.due + stats.counts.overdue + stats.counts.waived} challans`} icon="slips" tone="navy" />
+        <Stat label="Outstanding" value={fmtMoney(stats.outstanding, cur)} sub={`${stats.counts.overdue} overdue`} icon="alert" tone={stats.outstanding > 0 ? "red" : "green"} />
+        <Stat label="Fully Paid" value={stats.counts.paid} sub={`${stats.counts.partial} partial`} icon="check" tone="green" />
       </div>
 
-      {/* filters */}
-      <div className="card p-3.5 mb-4 anim-fade-up">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <TSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="!w-auto min-w-40">
-            {lastNPeriods(8).map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
-          </TSelect>
-          <SearchBox value={q} onChange={setQ} placeholder="Search student…" className="w-full sm:w-52" />
-          <TSelect value={fBatch} onChange={(e) => setFBatch(e.target.value)} className="!w-auto min-w-36">
-            <option value="all">All batches</option>
-            {state.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </TSelect>
-          <div className="flex-1" />
-          <div className="flex gap-1.5 flex-wrap">
-            {chips.map((c) => (
-              <button key={c.key} onClick={() => setFStatus(c.key)}
-                className={`h-8 px-3 rounded-[8px] border text-[11.5px] font-bold transition-all tnum ${fStatus === c.key ? "bg-ink-900 text-white border-ink-900" : "bg-white text-ink-500 border-ink-200 hover:border-ink-400"}`}>
-                {c.label} <span className={fStatus === c.key ? "text-gold-400" : "text-ink-300"}>{c.n}</span>
+      {tab === "board" && (
+        <>
+          <div className="card p-3.5 mb-4 flex flex-wrap items-center gap-2.5 anim-fade-up">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mr-1"><Icon name="filter" size={13} className="inline mr-1" />Filter</span>
+            {["all", "overdue", "due", "partial", "paid", "waived"].map((f) => (
+              <button key={f} onClick={() => setFilter(f)} className={`h-8 px-3 rounded-[8px] text-[12px] font-bold transition-colors ${filter === f ? "bg-ink-900 text-white" : "bg-white border border-ink-200 text-ink-500 hover:border-ink-400"}`}>
+                {f === "all" ? "Everyone" : f === "due" ? "Due" : f === "partial" ? "Partially Paid" : f === "paid" ? "Paid" : f === "overdue" ? "Overdue" : "Waived"}
               </button>
             ))}
+            <div className="flex-1" />
+            <TSelect value={cls} onChange={(e) => setCls(e.target.value)} className="!w-auto min-w-36">
+              <option value="all">All classes</option>
+              {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+            </TSelect>
           </div>
-        </div>
-      </div>
 
-      {/* records table */}
-      <div className="card overflow-hidden anim-fade-up" style={{ animationDelay: "60ms" }}>
-        {recs.length === 0 ? (
-          <EmptyState icon="fees" title={`No ${fStatus === "all" ? "" : fStatus + " "}records for ${periodLabel(period)}`} message="Adjust the filters, or press Refresh Cycle to generate monthly charges for active students." action={<Btn variant="outline" icon="refresh" onClick={() => refresh()}>Refresh Cycle</Btn>} />
-        ) : (
-          <div className="overflow-x-auto scroll-thin">
-            <table className="w-full text-left min-w-[820px]">
-              <thead><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100 bg-ink-50/60">
-                <th className="pl-5 py-2.5 font-bold">Student</th><th className="py-2.5 font-bold text-right">Charge</th><th className="py-2.5 font-bold text-right">Prev. Balance</th><th className="py-2.5 font-bold text-right">Paid</th><th className="py-2.5 font-bold text-right">Balance</th><th className="py-2.5 font-bold">Due Date</th><th className="py-2.5 font-bold">Status</th><th className="py-2.5 pr-5 font-bold text-right">Actions</th>
-              </tr></thead>
-              <tbody className="divide-y divide-ink-100">
-                {recs.map((r) => {
-                  const s = nameOf(r.studentId);
-                  const bal = balanceOf(r, state.payments);
-                  const paid = paidOf(state.payments, r.id);
-                  const prev = previousBalance(state, r.studentId, r.period);
-                  const st = statusOf(r, state.payments, grace);
-                  return (
-                    <tr key={r.id} className="group hover:bg-gold-50/40 transition-colors">
-                      <td className="pl-5 py-3 cursor-pointer" onClick={() => nav("student", { id: r.studentId })}>
-                        <div className="flex items-center gap-3">
-                          <Avatar name={s?.name ?? "?"} size={32} />
-                          <div><div className="text-[13px] font-semibold text-ink-900">{s?.name}</div><div className="text-[11px] text-ink-400">{s?.grade}</div></div>
-                        </div>
-                      </td>
-                      <td className="py-3 text-right font-mono text-[12.5px] font-semibold tnum">{fmtMoney(chargeOf(r), cur)}{r.lateFee > 0 && <span className="block text-[10px] text-warn-600 font-sans font-semibold">incl. late fee</span>}</td>
-                      <td className="py-3 text-right font-mono text-[12px] tnum text-ink-500">{prev > 0 ? fmtMoney(prev, cur) : "—"}</td>
-                      <td className="py-3 text-right font-mono text-[12.5px] text-mint-600 tnum">{fmtMoney(paid, cur)}</td>
-                      <td className={`py-3 text-right font-mono text-[13px] font-bold tnum ${bal > 0 ? (st === "overdue" ? "text-flame-600" : "text-warn-600") : "text-ink-300"}`}>{fmtMoney(bal, cur)}</td>
-                      <td className="py-3 text-[12px] text-ink-500 tnum">{fmtDate(r.dueDate, df)}</td>
-                      <td className="py-3"><FeeStatusBadge status={st} pulse /></td>
-                      <td className="py-3 pr-5">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                          <IconBtn name="wallet" label="Record payment" onClick={() => { setPayStudent(r.studentId); setEditingPayment(undefined); setPayOpen(true); }} />
-                          <IconBtn name="slips" label="Send fee slip" onClick={() => nav("slips", { studentId: r.studentId, feeRecordId: r.id })} />
-                          <IconBtn name="file" label="Record details" onClick={() => setDetail(r)} />
-                        </div>
-                      </td>
+          <div className="card overflow-hidden anim-fade-up" style={{ animationDelay: "60ms" }}>
+            {rows.length === 0 ? (
+              <EmptyState icon="fees" title="Nothing here" message="No students match this filter for the selected month." action={<Btn variant="outline" onClick={() => { setFilter("all"); setCls("all"); }}>Clear Filters</Btn>} />
+            ) : (
+              <div className="overflow-x-auto scroll-thin">
+                <table className="w-full text-left min-w-[920px]">
+                  <thead className="sticky top-0 bg-ink-50 z-10">
+                    <tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
+                      <th className="pl-4 py-3 font-bold">Student</th>
+                      <th className="py-3 font-bold text-right">Charge</th>
+                      <th className="py-3 font-bold text-right">Paid</th>
+                      <th className="py-3 font-bold">Balance</th>
+                      <th className="py-3 font-bold">Due date</th>
+                      <th className="py-3 font-bold">Status</th>
+                      <th className="py-3 pr-4 font-bold text-right">Actions</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-ink-100">
+                    {rows.map(({ s, rec, bal, st }) => {
+                      const isOpen = expanded === s.id;
+                      const pays = rec ? state.payments.filter((p) => p.feeRecordId === rec.id).sort((a, b) => b.date.localeCompare(a.date)) : [];
+                      return (
+                        <React.Fragment key={s.id}>
+                          <tr className={`transition-colors ${isOpen ? "bg-gold-50/60" : "hover:bg-gold-50/40"}`}>
+                            <td className="pl-4 py-2.5">
+                              <button onClick={() => setExpanded(isOpen ? null : s.id)} className="flex items-center gap-3 text-left">
+                                <Avatar name={s.name} size={34} />
+                                <span>
+                                  <span className="block text-[13.5px] font-bold text-ink-900">{s.name}</span>
+                                  <span className="block text-[11px] text-ink-400">{s.grade} · fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</span>
+                                </span>
+                                <Icon name="chevD" size={13} className={`text-ink-300 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                              </button>
+                            </td>
+                            <td className="py-2.5 text-right font-mono text-[12.5px] font-semibold text-ink-900 tnum">{rec ? fmtMoney(chargeOf(rec), cur) : "—"}</td>
+                            <td className="py-2.5 text-right font-mono text-[12.5px] font-semibold text-mint-600 tnum">{rec ? fmtMoney(paidOf(state.payments, rec.id), cur) : "—"}</td>
+                            <td className="py-2.5">
+                              <div className="flex flex-col gap-0.5">
+                                <span className={`font-mono text-[13px] font-bold tnum ${bal > 0 ? "text-flame-600" : "text-mint-600"}`}>{rec ? fmtMoney(bal, cur) : "—"}</span>
+                              </div>
+                            </td>
+                            <td className="py-2.5"><span className="text-[12px] font-semibold text-ink-600 tnum">{rec ? fmtDate(rec.dueDate, df) : "—"}</span></td>
+                            <td className="py-2.5">{st === "none" ? <Badge tone="slate">No challan</Badge> : <FeeStatusBadge status={st as FeeStatus} />}</td>
+                            <td className="py-2.5 pr-4">
+                              <div className="flex items-center justify-end gap-0.5">
+                                <IconBtn name="wallet" label="Record payment" onClick={() => ui.openPayment(s.id)} />
+                                <IconBtn name="slips" label={bal > 0 ? "Send monthly challan" : "Fully paid — no challan"} onClick={() => {
+                                  if (!rec) { toast.push("No challan generated for this month yet.", "warn"); return; }
+                                  if (bal <= 0) { toast.push(`${s.name} is fully paid — challan not needed.`, "warn"); return; }
+                                  ui.openSlip({ kind: "challan", recordId: rec.id });
+                                }} />
+                                <IconBtn name="eye" label="Open profile" onClick={() => nav("student", { id: s.id })} />
+                              </div>
+                            </td>
+                          </tr>
+                          {isOpen && (
+                            <tr>
+                              <td colSpan={7} className="bg-ink-50/70 px-6 py-4">
+                                <div className="grid md:grid-cols-2 gap-5 anim-fade-in">
+                                  <div>
+                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Challan · {rec ? challanNo(state.feeRecords, rec.id) : "—"}</h3>
+                                    {rec ? (
+                                      <div className="rounded-[10px] border border-ink-150 bg-white divide-y divide-ink-100 text-[12.5px]">
+                                        <Row k="Monthly fee" v={fmtMoney(rec.baseFee, cur)} />
+                                        {rec.lateFee > 0 && <Row k="Late fee" v={fmtMoney(rec.lateFee, cur)} />}
+                                        {rec.adjustment !== 0 && <Row k="Adjustment" v={`${rec.adjustment > 0 ? "+" : "−"}${fmtMoney(Math.abs(rec.adjustment), cur)}`} />}
+                                        <Row k="Paid" v={`− ${fmtMoney(paidOf(state.payments, rec.id), cur)}`} green />
+                                        <Row k="Balance" v={fmtMoney(balanceOf(rec, state.payments), cur)} bold red={bal > 0} />
+                                        <Row k="Due date" v={fmtDate(rec.dueDate, df)} />
+                                      </div>
+                                    ) : <p className="text-[12.5px] text-ink-400">No fee record for {periodLabel(period)}.</p>}
+                                    <div className="flex gap-2 mt-3">
+                                      {rec && bal > 0 && <Btn size="sm" variant="gold" icon="send" onClick={() => ui.openSlip({ kind: "challan", recordId: rec.id })}>Send Challan</Btn>}
+                                      {rec && (
+                                        <Btn size="sm" variant="outline" icon={rec.waived ? "refresh" : "minus"} onClick={() => setWaiveRec(rec.id)}>{rec.waived ? "Remove Waiver" : "Waive Fee"}</Btn>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Receipts for this month</h3>
+                                    {pays.length === 0 ? <p className="text-[12.5px] text-ink-400">No payments recorded for {periodLabel(period)}.</p> : (
+                                      <div className="space-y-2">
+                                        {pays.map((p) => (
+                                          <div key={p.id} className={`flex items-center gap-2.5 rounded-[10px] border bg-white px-3 py-2 ${p.state === "voided" ? "opacity-50 border-ink-150" : "border-ink-150"}`}>
+                                            <Icon name="receipt" size={15} className={p.state === "voided" ? "text-ink-300" : "text-mint-600"} />
+                                            <span className="font-mono text-[11.5px] font-bold text-ink-800 tnum">{p.receiptNo}</span>
+                                            <span className="text-[11.5px] text-ink-400 tnum">{fmtDate(p.date, df)}</span>
+                                            <span className="text-[11px] text-ink-400">{p.method}</span>
+                                            <span className="flex-1" />
+                                            <span className={`font-mono text-[12px] font-bold tnum ${p.state === "voided" ? "text-ink-400 line-through" : "text-mint-700"}`}>{fmtMoney(p.amount, cur)}</span>
+                                            {p.state === "voided" ? <Badge tone="slate">Voided</Badge> : (
+                                              <>
+                                                <IconBtn name="send" label="Send receipt" onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} />
+                                                <IconBtn name="edit" label="Edit payment" onClick={() => ui.openPayment(s.id, p.id)} />
+                                                <IconBtn name="trash" label="Void payment" onClick={() => setVoidAsk(p.id)} />
+                                              </>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* record detail modal */}
-      <Modal open={!!detailRec} onClose={() => setDetail(null)} wide title={detailStudent ? `${detailStudent.name} — ${detailRec ? periodLabel(detailRec.period) : ""}` : ""} sub="Fee record breakdown, adjustments and payment trail"
-        footer={detailRec ? <>
-          <Btn variant="outline" icon="slips" onClick={() => nav("slips", { studentId: detailRec.studentId, feeRecordId: detailRec.id })}>Send Fee Slip</Btn>
-          <Btn variant="success" icon="wallet" onClick={() => { setPayStudent(detailRec.studentId); setEditingPayment(undefined); setDetail(null); setPayOpen(true); }}>Record Payment</Btn>
-        </> : undefined}>
-        {detailRec && detailStudent && (
-          <div className="space-y-5">
-            <div className="grid sm:grid-cols-3 gap-2.5">
-              {[
-                { l: "Base Fee", v: fmtMoney(detailRec.waived ? 0 : detailRec.baseFee, cur) },
-                { l: "Late Fee", v: fmtMoney(detailRec.lateFee, cur) },
-                { l: "Adjustment", v: fmtMoney(detailRec.adjustment, cur) },
-                { l: "Previous Balance", v: fmtMoney(previousBalance(state, detailRec.studentId, detailRec.period), cur) },
-                { l: "Total Charge", v: fmtMoney(chargeOf(detailRec), cur), strong: true },
-                { l: "Paid", v: fmtMoney(paidOf(state.payments, detailRec.id), cur) },
-              ].map((x) => (
-                <div key={x.l} className="rounded-[10px] bg-ink-50 border border-ink-100 px-3.5 py-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-ink-400">{x.l}</div>
-                  <div className={`font-mono font-bold text-[15px] mt-1 tnum ${x.strong ? "text-ink-900" : "text-ink-700"}`}>{x.v}</div>
-                </div>
-              ))}
+      {tab === "receipts" && (
+        <div className="card overflow-hidden anim-fade-up">
+          {receipts.length === 0 ? (
+            <EmptyState icon="receipt" title="No receipts this month" message="Every payment creates a small receipt you can WhatsApp instantly." action={<Btn variant="gold" icon="plus" onClick={() => ui.openPayment()}>Record Payment</Btn>} />
+          ) : (
+            <div className="overflow-x-auto scroll-thin">
+              <table className="w-full text-left min-w-[760px]">
+                <thead className="sticky top-0 bg-ink-50 z-10">
+                  <tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
+                    <th className="pl-4 py-3 font-bold">Receipt</th><th className="py-3 font-bold">Student</th><th className="py-3 font-bold">Date</th><th className="py-3 font-bold">Method</th><th className="py-3 font-bold text-right">Amount</th><th className="py-3 font-bold">For Month</th><th className="py-3 pr-4 font-bold text-right">Send</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-100">
+                  {receipts.map((p) => {
+                    const rec = state.feeRecords.find((r) => r.id === p.feeRecordId);
+                    return (
+                      <tr key={p.id} className="hover:bg-gold-50/40 transition-colors">
+                        <td className="pl-4 py-2.5"><button onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} className="font-mono text-[12.5px] font-bold text-ink-900 hover:text-mint-700 tnum">{p.receiptNo}</button></td>
+                        <td className="py-2.5 text-[13px] font-semibold text-ink-900">{nameOf(p.studentId)}</td>
+                        <td className="py-2.5 text-[12px] text-ink-500 tnum">{fmtDate(p.date, df)}</td>
+                        <td className="py-2.5 text-[12px] text-ink-500">{p.method}{p.reference ? ` · ${p.reference}` : ""}</td>
+                        <td className="py-2.5 text-right font-mono text-[13px] font-bold text-mint-600 tnum">{fmtMoney(p.amount, cur)}</td>
+                        <td className="py-2.5 text-[12px] text-ink-500">{rec ? periodLabel(rec.period, true) : "—"}</td>
+                        <td className="py-2.5 pr-4 text-right">
+                          <Btn size="sm" variant="wa" icon="whatsapp" onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })}>Send</Btn>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <div className="flex items-end justify-between gap-3 p-3.5 rounded-[10px] border border-ink-900 bg-ink-900 text-white">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-300">Remaining Balance</div>
-                <div className={`font-mono font-extrabold text-[22px] tnum ${balanceOf(detailRec, state.payments) > 0 ? "text-gold-400" : "text-mint-500"}`}>{fmtMoney(balanceOf(detailRec, state.payments), cur)}</div>
-              </div>
-              <div className="text-right">
-                <FeeStatusBadge status={statusOf(detailRec, state.payments, grace)} />
-                <div className="text-[11px] text-ink-300 mt-1 tnum">Due {fmtDate(detailRec.dueDate, df)}</div>
-              </div>
-            </div>
+          )}
+        </div>
+      )}
 
-            <div className="grid sm:grid-cols-[1fr_auto] gap-2.5 items-end">
-              <div>
-                <span className="block text-[11px] font-bold uppercase tracking-wide text-ink-500 mb-1.5">Adjustment (− for discount) — applies to this cycle only</span>
-                <TInput type="number" value={adjust} onChange={(e) => setAdjust(e.target.value)} className="!w-44" />
-              </div>
-              <div className="flex gap-2">
-                <Btn variant="outline" icon="save" onClick={saveAdjust}>Save Adjustment</Btn>
-                <Btn variant={detailRec.waived ? "outline" : "danger"} icon={detailRec.waived ? "restore" : "x"} onClick={() => (detailRec.waived ? toggleWaive() : setWaiveAsk(true))}>
-                  {detailRec.waived ? "Remove Waiver" : "Waive Fee"}
-                </Btn>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-display font-bold text-[14.5px] text-ink-900 mb-2.5">Payment History</h3>
-              {detailPayments.length === 0 ? (
-                <p className="text-[12.5px] text-ink-400">No payments against this record yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {detailPayments.map((p) => (
-                    <div key={p.id} className={`flex items-center gap-3 rounded-[10px] border px-3.5 py-2.5 ${p.state === "voided" ? "border-flame-100 bg-flame-50/50 opacity-70" : "border-ink-100"}`}>
-                      <span className={`w-8 h-8 rounded-[8px] flex items-center justify-center ${p.state === "voided" ? "bg-flame-100 text-flame-600" : "bg-mint-50 text-mint-600"}`}><Icon name="wallet" size={15} /></span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-semibold text-ink-900 tnum">{p.receiptNo} · {fmtMoney(p.amount, cur)} <Badge tone={p.state === "voided" ? "red" : p.state === "edited" ? "amber" : "green"}>{p.state === "voided" ? "Voided" : p.state === "edited" ? "Edited" : "Recorded"}</Badge></div>
-                        <div className="text-[11px] text-ink-400 tnum">{fmtDate(p.date, df)} · {p.method}{p.reference ? ` · ref ${p.reference}` : ""}{p.note ? ` · ${p.note}` : ""}</div>
-                      </div>
-                      {p.state !== "voided" && <>
-                        <IconBtn name="edit" label="Edit payment" onClick={() => { setEditingPayment(p.id); setDetail(null); setPayOpen(true); }} />
-                        <IconBtn name="trash" label="Void payment" onClick={() => setVoidAsk(p.id)} />
-                      </>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <PaymentModal open={payOpen} onClose={() => { setPayOpen(false); setEditingPayment(undefined); }} studentId={payStudent} paymentId={editingPayment} />
+      <p className="text-[11.5px] text-ink-400 mt-4 flex items-center gap-2"><Icon name="note" size={13} /> Challans auto-generate on the 1st of every month for active students. Fully-paid students are protected — their challan button simply says “Paid”.</p>
 
       <Confirm open={!!voidAsk} onClose={() => setVoidAsk(null)} onConfirm={() => voidAsk && voidPayment(voidAsk)} title="Void this payment?" confirmLabel="Void Payment"
         message="Voiding keeps the record traceable but removes it from all balances and reports. This cannot be undone." />
-      <Confirm open={waiveAsk} onClose={() => setWaiveAsk(false)} onConfirm={toggleWaive} title="Waive this month's fee?" confirmLabel="Waive Fee" tone="gold"
-        message="The charge will be set aside and the record marked Waived. Payments already received remain in history. You can remove the waiver later." />
+      <Confirm open={!!waiveRec} onClose={() => setWaiveRec(null)} onConfirm={toggleWaive} tone="gold" title={state.feeRecords.find((r) => r.id === waiveRec)?.waived ? "Remove this waiver?" : "Waive this month's fee?"} confirmLabel={state.feeRecords.find((r) => r.id === waiveRec)?.waived ? "Remove Waiver" : "Waive Fee"}
+        message="The charge will be set aside and the record marked Waived. Payments already received remain in history." />
+      <span className="hidden">{todayISO()}</span>
+    </div>
+  );
+}
+
+function Row({ k, v, bold, red, green }: { k: string; v: string; bold?: boolean; red?: boolean; green?: boolean }) {
+  return (
+    <div className="flex items-center justify-between px-3.5 py-2">
+      <span className="text-ink-500 font-semibold text-[12px]">{k}</span>
+      <span className={`font-mono tnum ${bold ? "font-bold text-[13px]" : "font-semibold text-[12px]"} ${red ? "text-flame-600" : green ? "text-mint-600" : "text-ink-900"}`}>{v}</span>
     </div>
   );
 }

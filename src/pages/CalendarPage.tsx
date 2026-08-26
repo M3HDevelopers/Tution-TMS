@@ -1,222 +1,189 @@
 import React, { useMemo, useState } from "react";
-import { Badge, Btn, Confirm, Field, Icon, IconBtn, Modal, PageHead, TInput, TSelect, useToast } from "../components/ui";
+import { Badge, Btn, Confirm, Icon, PageHead, TInput, TSelect, useToast } from "../components/ui";
 import { useStore, withActivity } from "../lib/store";
-import { fmtDate, pad2, parseISO, todayISO, toISO, uid, weekdayIdx } from "../lib/utils";
-import { WEEKDAYS } from "../types";
-import type { Holiday } from "../types";
+import { WEEKDAYS, WEEKDAYS_S, fmtDate, monthKeyOf, naturalCompare, pad2, periodLabel, shiftPeriod, timeLabel, todayISO, uid, weekdayIdx } from "../lib/utils";
+import type { HolidayScope } from "../types";
 
 export default function CalendarPage() {
   const { state, patch } = useStore();
   const toast = useToast();
   const df = state.settings.dateFormat;
   const today = todayISO();
+  const [month, setMonth] = useState(monthKeyOf(today));
+  const [selected, setSelected] = useState(today);
 
-  const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
-  const [dayModal, setDayModal] = useState<string | null>(null);
   const [title, setTitle] = useState("");
-  const [scope, setScope] = useState<"all" | "batch">("all");
-  const [batchId, setBatchId] = useState("");
   const [reason, setReason] = useState("");
+  const [scope, setScope] = useState<HolidayScope>("all");
+  const [className, setClassName] = useState("");
   const [err, setErr] = useState("");
-  const [removeAsk, setRemoveAsk] = useState<Holiday | null>(null);
+  const [delAsk, setDelAsk] = useState<string | null>(null);
 
-  const firstDay = new Date(cursor.y, cursor.m, 1);
-  const startOffset = firstDay.getDay();
-  const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
-  const monthName = firstDay.toLocaleString("en", { month: "long" });
+  const classes = useMemo(() => Array.from(new Set(state.students.map((s) => s.grade))).sort(naturalCompare), [state.students]);
 
   const cells = useMemo(() => {
-    const arr: (string | null)[] = [];
-    for (let i = 0; i < startOffset; i++) arr.push(null);
-    for (let d = 1; d <= daysInMonth; d++) arr.push(`${cursor.y}-${pad2(cursor.m + 1)}-${pad2(d)}`);
-    return arr;
-  }, [startOffset, daysInMonth, cursor]);
+    const [y, m] = month.split("-").map(Number);
+    const first = new Date(y, m - 1, 1);
+    const dim = new Date(y, m, 0).getDate();
+    const out: { date: string; day: number }[] = [];
+    for (let i = 0; i < first.getDay(); i++) out.push({ date: "", day: 0 });
+    for (let d = 1; d <= dim; d++) out.push({ date: `${month}-${pad2(d)}`, day: d });
+    return out;
+  }, [month]);
 
-  const holidaysFor = (date: string) => state.holidays.filter((h) => h.date === date);
-
-  const openDay = (date: string) => {
-    setDayModal(date); setTitle(""); setScope("all"); setBatchId(state.batches[0]?.id ?? ""); setReason(""); setErr("");
-  };
+  const holidaysOn = (date: string) => state.holidays.filter((h) => h.date === date);
 
   const addHoliday = () => {
-    if (!dayModal) return;
-    if (!title.trim()) return setErr("Give the holiday a name — e.g. Eid, illness, personal work.");
-    const h: Holiday = { id: uid("hol"), date: dayModal, scope, batchId: scope === "batch" ? batchId : undefined, title: title.trim(), reason: reason.trim() || undefined };
+    if (!title.trim()) { setErr("Give the holiday a name — e.g. Eid, Personal work."); return; }
+    if (scope === "class" && !className) { setErr("Pick which class this holiday applies to."); return; }
+    setErr("");
+    const h = { id: uid("hol"), date: selected, scope, className: scope === "class" ? className : undefined, title: title.trim(), reason: reason.trim() || undefined };
     const holidays = [...state.holidays, h];
-    const past = dayModal < today;
-    patch({ holidays, activity: withActivity({ ...state, holidays }, `Holiday added — ${h.title} on ${fmtDate(dayModal, df)} (${h.scope === "all" ? "whole centre" : "batch"}).`, "system") });
-    toast.push(past ? "Holiday added to a past date — absences on that day will not count" : "Holiday added");
-    setDayModal(null);
+    patch({ holidays, activity: withActivity({ ...state, holidays }, `Holiday added — ${h.title} on ${fmtDate(selected, df)}${scope === "class" ? ` (${className} only)` : " (whole tuition)"}.`, "settings") });
+    setTitle(""); setReason("");
+    toast.push("Holiday added — attendance is protected on this day");
   };
 
-  const removeHoliday = (h: Holiday) => {
-    const holidays = state.holidays.filter((x) => x.id !== h.id);
-    patch({ holidays, activity: withActivity({ ...state, holidays }, `Holiday removed — ${h.title} on ${fmtDate(h.date, df)}.`, "system") });
-    toast.push("Holiday removed", "warn");
+  const removeHoliday = (id: string) => {
+    const h = state.holidays.find((x) => x.id === id);
+    const holidays = state.holidays.filter((x) => x.id !== id);
+    patch({ holidays, activity: withActivity({ ...state, holidays }, `Holiday removed — ${h?.title} (${fmtDate(h?.date ?? "", df)}).`, "settings") });
+    toast.push("Holiday removed");
   };
 
-  const setWeeklyOff = (day: number) => {
-    const offs = state.settings.weeklyOffs.includes(day)
-      ? state.settings.weeklyOffs.filter((d) => d !== day)
-      : [...state.settings.weeklyOffs, day].sort();
-    const settings = { ...state.settings, weeklyOffs: offs };
-    patch({ settings, activity: withActivity({ ...state, settings }, `Weekly off updated: ${offs.map((d) => WEEKDAYS[d]).join(", ") || "none"}.`, "system") });
-    toast.push("Weekly off days saved");
+  const toggleOff = (d: number) => {
+    const weeklyOffs = state.settings.weeklyOffs.includes(d)
+      ? state.settings.weeklyOffs.filter((x) => x !== d)
+      : [...state.settings.weeklyOffs, d].sort();
+    const settings = { ...state.settings, weeklyOffs };
+    patch({ settings, activity: withActivity({ ...state, settings }, `Weekly off updated: ${weeklyOffs.map((x) => WEEKDAYS[x]).join(", ") || "none"}.`, "settings") });
+    toast.push("Weekly off days updated");
   };
 
-  const upcoming = [...state.holidays].sort((a, b) => a.date.localeCompare(b.date)).filter((h) => h.date >= today).slice(0, 6);
+  const selHols = holidaysOn(selected);
+  const selOff = state.settings.weeklyOffs.includes(weekdayIdx(selected));
 
   return (
     <div>
-      <PageHead title="Calendar & Holidays" sub="Weekly offs and one-off holidays are excluded from attendance automatically" />
+      <PageHead title="Calendar & Holidays" sub="Tap any day to add a holiday — attendance marking is automatically blocked on those days" />
 
-      <div className="grid lg:grid-cols-[1.6fr_1fr] gap-5 items-start">
+      <div className="grid lg:grid-cols-[1.5fr_1fr] gap-5">
         {/* calendar */}
-        <section className="card p-5 anim-fade-up">
+        <div className="card p-5 anim-fade-up">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-extrabold text-[20px] text-ink-900">{monthName} {cursor.y}</h2>
-            <div className="flex gap-1.5">
-              <IconBtn name="chevL" label="Previous month" onClick={() => setCursor((c) => { const d = new Date(c.y, c.m - 1, 1); return { y: d.getFullYear(), m: d.getMonth() }; })} className="border border-ink-100" />
-              <Btn size="sm" variant="outline" onClick={() => { const d = new Date(); setCursor({ y: d.getFullYear(), m: d.getMonth() }); }}>Today</Btn>
-              <IconBtn name="chevR" label="Next month" onClick={() => setCursor((c) => { const d = new Date(c.y, c.m + 1, 1); return { y: d.getFullYear(), m: d.getMonth() }; })} className="border border-ink-100" />
+            <div className="flex items-center gap-2">
+              <button onClick={() => setMonth(shiftPeriod(month, -1))} className="w-8 h-8 rounded-[8px] border border-ink-200 bg-white flex items-center justify-center text-ink-600 hover:border-ink-400" aria-label="Previous month"><Icon name="chevL" size={15} /></button>
+              <h2 className="font-display font-bold text-[17px] text-ink-900 w-44 text-center">{periodLabel(month)}</h2>
+              <button onClick={() => setMonth(shiftPeriod(month, 1))} className="w-8 h-8 rounded-[8px] border border-ink-200 bg-white flex items-center justify-center text-ink-600 hover:border-ink-400" aria-label="Next month"><Icon name="chevR" size={15} /></button>
             </div>
+            <button onClick={() => { setMonth(monthKeyOf(today)); setSelected(today); }} className="text-[12px] font-bold text-ink-500 hover:text-ink-900">Today</button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-            {WEEKDAYS.map((d, i) => (
-              <button key={d} onClick={() => setWeeklyOff(i)} title={`Toggle weekly off: ${d}`}
-                className={`h-7 rounded-md text-[10.5px] font-bold tracking-wide transition-colors ${state.settings.weeklyOffs.includes(i) ? "bg-ink-900 text-gold-400" : "text-ink-400 hover:bg-ink-100"}`}>
-                {d}{state.settings.weeklyOffs.includes(i) ? " · off" : ""}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1.5">
-            {cells.map((date, i) => {
-              if (!date) return <div key={`x${i}`} />;
-              const wd = weekdayIdx(date);
-              const weekly = state.settings.weeklyOffs.includes(wd);
-              const hols = holidaysFor(date);
-              const isToday = date === today;
-              const isPast = date < today;
+          {/* weekly offs */}
+          <div className="mb-4 rounded-[10px] bg-ink-50/70 border border-ink-100 px-3.5 py-2.5 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mr-1">Weekly off:</span>
+            {WEEKDAYS_S.map((d, i) => {
+              const on = state.settings.weeklyOffs.includes(i);
               return (
-                <button key={date} onClick={() => openDay(date)}
-                  className={`relative min-h-[74px] rounded-[9px] border p-1.5 text-left transition-all hover:border-gold-500 hover:shadow-sm group ${isToday ? "border-gold-500 ring-2 ring-gold-500/25 bg-gold-50/50" : weekly ? "border-ink-100 bg-ink-50/80" : "border-ink-100 bg-white hover:bg-gold-50/30"} ${isPast ? "opacity-75" : ""}`}>
-                  <span className={`text-[12px] font-bold tnum ${isToday ? "text-gold-600" : weekly ? "text-ink-300" : "text-ink-700"}`}>{parseISO(date).getDate()}</span>
-                  <span className="block mt-1 space-y-0.5">
-                    {weekly && <span className="block text-[9px] font-bold uppercase tracking-wide text-ink-300">Weekly off</span>}
-                    {hols.slice(0, 2).map((h) => (
-                      <span key={h.id} className={`block truncate text-[9.5px] font-bold rounded px-1 py-0.5 ${h.scope === "all" ? "bg-[#0e7490]/12 text-[#0e6b7c]" : "bg-gold-100 text-gold-700"}`}>{h.title}</span>
-                    ))}
-                  </span>
-                  <span className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 text-gold-600 transition-opacity"><Icon name="plus" size={12} /></span>
-                </button>
+                <button key={d} onClick={() => toggleOff(i)} className={`h-7 px-2.5 rounded-[7px] text-[11.5px] font-bold transition-colors ${on ? "bg-ink-900 text-gold-300" : "bg-white border border-ink-200 text-ink-400 hover:border-ink-400"}`}>{d}</button>
               );
             })}
           </div>
 
-          <div className="flex flex-wrap gap-3 mt-4 text-[11px] font-semibold text-ink-500">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-ink-50 border border-ink-200" /> Weekly off (click weekday header to toggle)</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#0e7490]/20" /> Centre holiday</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gold-100" /> Batch holiday</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border-2 border-gold-500" /> Today</span>
+          <div className="grid grid-cols-7 gap-1.5">
+            {WEEKDAYS_S.map((d) => <div key={d} className="text-center text-[10.5px] font-bold uppercase tracking-wider text-ink-400 py-1">{d}</div>)}
+            {cells.map((c, i) => {
+              if (c.day === 0) return <div key={`e${i}`} />;
+              const hols = holidaysOn(c.date);
+              const off = state.settings.weeklyOffs.includes(weekdayIdx(c.date));
+              const isSel = c.date === selected;
+              const isToday = c.date === today;
+              return (
+                <button key={c.date} onClick={() => setSelected(c.date)}
+                  className={`relative h-14 sm:h-16 rounded-[9px] border flex flex-col items-center justify-center gap-0.5 transition-all duration-150 press
+                    ${isSel ? "border-gold-500 ring-2 ring-gold-500/30 shadow" : "hover:border-ink-300"}
+                    ${hols.length ? "border-[#0e7490]/50 bg-[#ecf6f8]" : off ? "border-ink-100 bg-ink-50/70" : "border-ink-100 bg-white"}
+                    ${isToday ? "border-ink-900" : ""}`}>
+                  <span className={`text-[13px] font-bold tnum ${hols.length ? "text-[#0e6b7c]" : isToday ? "text-white" : "text-ink-700"}`}>
+                    {isToday ? <span className="inline-flex w-6 h-6 rounded-full bg-ink-900 items-center justify-center">{c.day}</span> : c.day}
+                  </span>
+                  {hols.length > 0 && <span className="text-[8px] font-extrabold tracking-wide text-[#0e6b7c] uppercase truncate max-w-full px-1">{hols[0].title}</span>}
+                  {hols.length === 0 && off && <span className="text-[8px] font-bold text-ink-300">OFF</span>}
+                </button>
+              );
+            })}
           </div>
-        </section>
+          <div className="flex items-center gap-4 mt-4 text-[11px] font-semibold text-ink-500 flex-wrap">
+            <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] bg-[#ecf6f8] border border-[#0e7490]/50" /> Holiday</span>
+            <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] bg-ink-100 border border-ink-100" /> Weekly off</span>
+            <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border-2 border-ink-900" /> Today</span>
+          </div>
+        </div>
 
-        {/* side lists */}
-        <div className="space-y-5">
-          <section className="card p-5 anim-fade-up" style={{ animationDelay: "80ms" }}>
-            <h2 className="font-display font-bold text-[16px] text-ink-900 mb-3">Upcoming Holidays</h2>
-            {upcoming.length === 0 ? (
-              <p className="text-[12.5px] text-ink-400">No one-off holidays scheduled. Click any date on the calendar to add one.</p>
-            ) : (
-              <div className="space-y-2">
-                {upcoming.map((h) => (
-                  <div key={h.id} className="flex items-center gap-3 rounded-[10px] border border-ink-100 px-3.5 py-2.5">
-                    <div className="w-10 text-center shrink-0">
-                      <div className="font-mono font-bold text-[16px] text-ink-900 tnum leading-none">{parseISO(h.date).getDate()}</div>
-                      <div className="text-[9px] font-bold uppercase text-ink-400 mt-0.5">{parseISO(h.date).toLocaleString("en", { month: "short" })}</div>
-                    </div>
+        {/* day panel */}
+        <div className="space-y-4 self-start">
+          <div className="card p-5 anim-fade-up" style={{ animationDelay: "70ms" }}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display font-bold text-[16px] text-ink-900">{fmtDate(selected, df)}</h2>
+              {selOff && <Badge tone="slate">Weekly off</Badge>}
+            </div>
+
+            {selHols.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {selHols.map((h) => (
+                  <div key={h.id} className="rounded-[10px] border border-[#0e7490]/30 bg-[#ecf6f8] px-3.5 py-2.5 flex items-start gap-2.5 anim-fade-in">
+                    <Icon name="calendar" size={15} className="text-[#0e6b7c] mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-semibold text-ink-900 truncate">{h.title}</div>
-                      <div className="text-[11px] text-ink-400">{h.scope === "all" ? "Whole centre" : `Batch: ${state.batches.find((b) => b.id === h.batchId)?.name ?? ""}`}{h.reason ? ` · ${h.reason}` : ""}</div>
+                      <p className="text-[13px] font-bold text-[#0e6b7c]">{h.title} <Badge tone={h.scope === "all" ? "teal" : "gold"} className="ml-1">{h.scope === "all" ? "Whole tuition" : h.className}</Badge></p>
+                      {h.reason && <p className="text-[11.5px] text-ink-500 mt-0.5">{h.reason}</p>}
                     </div>
-                    <IconBtn name="trash" label="Remove holiday" onClick={() => setRemoveAsk(h)} />
+                    <button onClick={() => setDelAsk(h.id)} className="text-ink-400 hover:text-flame-600" aria-label="Remove holiday"><Icon name="trash" size={15} /></button>
                   </div>
                 ))}
               </div>
             )}
-          </section>
 
-          <section className="card p-5 anim-fade-up" style={{ animationDelay: "140ms" }}>
-            <h2 className="font-display font-bold text-[16px] text-ink-900 mb-3">Weekly Off Days</h2>
-            <div className="flex gap-1.5 flex-wrap">
-              {WEEKDAYS.map((d, i) => {
-                const on = state.settings.weeklyOffs.includes(i);
-                return (
-                  <button key={d} onClick={() => setWeeklyOff(i)} className={`w-12 h-9 rounded-[8px] border text-[11.5px] font-bold transition-all ${on ? "bg-ink-900 text-gold-400 border-ink-900" : "bg-white text-ink-400 border-ink-200 hover:border-ink-400"}`}>{d}</button>
-                );
-              })}
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Add a holiday on this day</h3>
+            <div className="space-y-3">
+              <TInput placeholder="Title — e.g. Eid, Sick leave, Personal work" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <TInput placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
+              <div className="grid grid-cols-2 gap-2.5">
+                <TSelect value={scope} onChange={(e) => setScope(e.target.value as HolidayScope)}>
+                  <option value="all">Whole tuition</option>
+                  <option value="class">One class only</option>
+                </TSelect>
+                {scope === "class" ? (
+                  <TSelect value={className} onChange={(e) => setClassName(e.target.value)}>
+                    <option value="">Pick class…</option>
+                    {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </TSelect>
+                ) : (
+                  <div className="h-9.5 px-3 rounded-[9px] border border-dashed border-ink-200 flex items-center text-[12px] text-ink-400">Everyone stays home</div>
+                )}
+              </div>
+              {err && <p className="text-[12px] font-semibold text-flame-600 anim-fade-in">{err}</p>}
+              <Btn variant="gold" icon="plus" className="w-full" onClick={addHoliday}>Add Holiday</Btn>
+              {selected < today && <p className="text-[11px] text-warn-700 font-semibold flex items-center gap-1.5"><Icon name="alert" size={12} /> Past date — useful for correcting old records.</p>}
             </div>
-            <p className="text-[11.5px] text-ink-400 mt-3 leading-relaxed">Attendance is blocked on centre-wide holidays, so absent counts are never polluted by closed days.</p>
-          </section>
+          </div>
 
-          <section className="card p-5 anim-fade-up" style={{ animationDelay: "200ms" }}>
-            <h2 className="font-display font-bold text-[16px] text-ink-900 mb-3">All Recorded Holidays</h2>
-            <div className="space-y-1.5 max-h-64 overflow-y-auto scroll-thin">
-              {[...state.holidays].sort((a, b) => b.date.localeCompare(a.date)).map((h) => (
-                <div key={h.id} className="flex items-center justify-between gap-2 text-[12px] py-1 border-b border-dashed border-ink-100 last:border-0">
-                  <span className="font-semibold text-ink-700">{h.title}</span>
-                  <span className="text-ink-400 tnum shrink-0">{fmtDate(h.date, df)} · {h.scope === "all" ? "centre" : "batch"}</span>
-                </div>
-              ))}
-              {state.holidays.length === 0 && <p className="text-[12.5px] text-ink-400">None yet.</p>}
-            </div>
-          </section>
+          <div className="card p-5 anim-fade-up" style={{ animationDelay: "120ms" }}>
+            <h3 className="font-display font-bold text-[14.5px] text-ink-900 mb-2.5">Upcoming holidays</h3>
+            {state.holidays.filter((h) => h.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5).map((h) => (
+              <div key={h.id} className="flex items-center gap-2.5 py-1.5">
+                <span className="font-mono text-[11.5px] font-bold text-ink-900 w-20 tnum">{fmtDate(h.date, df).slice(0, 6)}</span>
+                <span className="text-[12.5px] font-semibold text-ink-700 flex-1 truncate">{h.title}</span>
+                <Badge tone={h.scope === "all" ? "teal" : "gold"}>{h.scope === "all" ? "All" : h.className}</Badge>
+              </div>
+            ))}
+            {state.holidays.filter((h) => h.date >= today).length === 0 && <p className="text-[12.5px] text-ink-400">Nothing planned.</p>}
+            <p className="text-[11px] text-ink-400 mt-3 pt-3 border-t border-ink-100">Regular timing: <b className="text-ink-700 tnum">{timeLabel(state.settings.startTime)} – {timeLabel(state.settings.endTime)}</b></p>
+          </div>
         </div>
       </div>
 
-      {/* add holiday modal */}
-      <Modal open={!!dayModal} onClose={() => setDayModal(null)} title={dayModal ? `Holiday on ${fmtDate(dayModal, df)}` : ""} sub={dayModal && dayModal < today ? "This date is in the past — attendance on it will be excluded retroactively." : "Attendance marking will be blocked for this day."}
-        footer={<>
-          <Btn variant="outline" onClick={() => setDayModal(null)}>Cancel</Btn>
-          <Btn variant="gold" icon="calendar" onClick={addHoliday}>Add Holiday</Btn>
-        </>}>
-        <div className="space-y-4">
-          {dayModal && holidaysFor(dayModal).length > 0 && (
-            <div className="rounded-[10px] bg-ink-50 border border-ink-100 px-3.5 py-2.5 space-y-1.5">
-              {holidaysFor(dayModal).map((h) => (
-                <div key={h.id} className="flex items-center justify-between text-[12.5px]">
-                  <span className="font-semibold text-ink-800">{h.title} <Badge tone={h.scope === "all" ? "teal" : "gold"}>{h.scope === "all" ? "Centre" : "Batch"}</Badge></span>
-                  <IconBtn name="trash" label="Remove" onClick={() => setRemoveAsk(h)} />
-                </div>
-              ))}
-            </div>
-          )}
-          <Field label="Title" required error={err}>
-            <TInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Eid, fever at home, family function" autoFocus />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Applies To">
-              <TSelect value={scope} onChange={(e) => setScope(e.target.value as "all" | "batch")}>
-                <option value="all">Whole tuition centre</option>
-                <option value="batch">One batch only</option>
-              </TSelect>
-            </Field>
-            {scope === "batch" && (
-              <Field label="Batch">
-                <TSelect value={batchId} onChange={(e) => setBatchId(e.target.value)}>
-                  {state.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </TSelect>
-              </Field>
-            )}
-          </div>
-          <Field label="Reason (optional)"><TInput value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Shown on the calendar" /></Field>
-        </div>
-      </Modal>
-
-      <Confirm open={!!removeAsk} onClose={() => setRemoveAsk(null)} onConfirm={() => removeAsk && removeHoliday(removeAsk)} title="Remove holiday?" confirmLabel="Remove"
-        message={removeAsk ? `“${removeAsk.title}” on ${fmtDate(removeAsk.date, df)} will be removed. If the class actually met, you can mark attendance for that date afterwards.` : ""} />
+      <Confirm open={!!delAsk} onClose={() => setDelAsk(null)} onConfirm={() => delAsk && removeHoliday(delAsk)} title="Remove this holiday?" confirmLabel="Remove Holiday"
+        message="Attendance can again be marked for this day. If it is a past date, students may need to be marked manually." />
     </div>
   );
 }
