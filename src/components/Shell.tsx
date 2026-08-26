@@ -427,16 +427,18 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-ink-950/35 anim-fade-in sm:bg-ink-950/20" onClick={onClose} />
-      {/* mobile: centred full-width sheet under the header · desktop: anchored dropdown */}
-      <div className="fixed left-2.5 right-2.5 top-[64px] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[400px] card overflow-hidden anim-pop shadow-2xl">
-        <div className="px-4 py-3 bg-ink-900 flex items-center justify-between gap-2">
-          <span className="font-display font-bold text-[14.5px] text-white flex items-center gap-2">
-            <Icon name="bell" size={15} className="text-gold-400" /> Notifications
-          </span>
-          <Btn size="sm" variant="gold" icon="plus" onClick={() => setComposer(true)}>Timing Change</Btn>
-        </div>
-        <div className="max-h-[58vh] sm:max-h-[62vh] overflow-y-auto scroll-thin overscroll-contain">
+      <div className="fixed inset-0 z-40 bg-ink-950/45 anim-fade-in" onClick={onClose} />
+      {/* mobile: proper centred modal · desktop: anchored under the bell.
+          Page scroll stays locked — only the list inside scrolls. */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:items-start sm:justify-end sm:pt-16 sm:pr-5 pointer-events-none">
+        <div className="pointer-events-auto w-full sm:w-[400px] max-h-[82vh] card overflow-hidden anim-pop shadow-2xl flex flex-col">
+          <div className="px-4 py-3 bg-ink-900 flex items-center justify-between gap-2 shrink-0">
+            <span className="font-display font-bold text-[14.5px] text-white flex items-center gap-2">
+              <Icon name="bell" size={15} className="text-gold-400" /> Notifications
+            </span>
+            <Btn size="sm" variant="gold" icon="plus" onClick={() => setComposer(true)}>Timing Change</Btn>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto scroll-thin overscroll-contain">
           {notices.length === 0 && (
             <p className="text-[12.5px] text-ink-400 text-center px-6 py-10">All clear — no challans pending, no overdue fees, no absentees today.</p>
           )}
