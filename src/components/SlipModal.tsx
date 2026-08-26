@@ -43,9 +43,13 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetKey]);
 
-  const studentId = target?.kind === "challan"
-    ? (state.feeRecords ?? []).find((r) => r.id === (target as { recordId?: string }).recordId)?.studentId
-    : (state.payments ?? []).find((p) => p.id === (target as { recordId?: string; paymentId?: string }).paymentId)?.studentId;
+  // IMPORTANT: SlipModal is always mounted (target starts as null) — every
+  // access below must treat a null target as "nothing open yet".
+  const studentId = !target
+    ? undefined
+    : target.kind === "challan"
+      ? (state.feeRecords ?? []).find((r) => r.id === target.recordId)?.studentId
+      : (state.payments ?? []).find((p) => p.id === target.paymentId)?.studentId;
 
   const guardians = useMemo(
     () => (studentId ? state.guardians.filter((g) => g.studentId === studentId).sort((a, b) => Number(b.primary) - Number(a.primary)) : []),
@@ -101,15 +105,28 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
     }
   };
 
-  /* per-number flow — opens that exact WhatsApp chat with the message, image auto-downloads for attaching */
-  const openChat = (phone: string) => {
-    if (canAttach) { shareAttached(); return; }
-    if (file) {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(file);
-      a.download = fileName;
-      a.click();
+  /* per-guardian flow — the number is auto-selected, then the image + message
+     are handed to the native share sheet together (WhatsApp opens with both
+     already attached on phones). Fallback: download image + open that exact chat. */
+  const shareTo = async (gid: string, phone: string) => {
+    setSel((s) => (s.includes(gid) ? s : [...s, gid]));
+    if (!file) { toast.push("Image is still generating — one second…", "warn"); return; }
+    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    if (typeof navigator.share === "function" && nav.canShare && nav.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: msg });
+        markSent([phone]);
+        return;
+      } catch (e) {
+        if ((e as DOMException)?.name !== "AbortError") { /* fall through to fallback */ }
+        else return; // user cancelled the share sheet
+      }
     }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file);
+    a.download = fileName;
+    a.click();
+    toast.push("Image downloading — attach it in the WhatsApp chat", "warn");
     const w = window.open(waLink(phone, msg), "_blank", "noopener");
     if (w) markSent([phone]);
     else toast.push("Pop-up blocked — allow pop-ups to open WhatsApp.", "warn");
@@ -159,7 +176,7 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
             </button>
           ) : (
             <div className="rounded-[10px] border border-ink-150 bg-ink-50/70 px-3 py-2.5 text-[11.5px] text-ink-500 leading-relaxed">
-              Is browser mein direct attach support nahi hai — chat khulte hi image download ho jayegi, use chat mein attach kar dein.
+              This browser doesn't support direct image attach — the image downloads when the chat opens, then attach it in the chat.
             </div>
           )}
 
@@ -180,16 +197,17 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
                         <span className="block text-[13px] font-semibold text-ink-900 truncate">{g.name} <span className="text-ink-400 font-normal">· {g.relation}</span></span>
                         <span className="block font-mono text-[11px] text-ink-400 tnum">{g.phone}</span>
                       </span>
-                      <button type="button" onClick={(e) => { e.preventDefault(); openChat(g.phone); }} disabled={!on || !image}
+                      {/* number auto-select hota hai — image + message dono saath share hote hain */}
+                      <button type="button" onClick={(e) => { e.preventDefault(); shareTo(g.id, g.phone); }} disabled={!image}
                         className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[#128c5e] text-white text-[11.5px] font-bold disabled:opacity-35 press shrink-0">
-                        <Icon name="whatsapp" size={13} /> Open
+                        <Icon name="whatsapp" size={13} /> Share
                       </button>
                     </label>
                   );
                 })}
                 {selected.length > 1 && (
                   <p className="text-[11px] text-ink-400 leading-relaxed px-1">
-                    {selected.length} numbers selected — "Share on WhatsApp" se image+message ek saath bhejein, ya har number ka "Open" individually dabayein.
+                    {selected.length} numbers selected — use "Share on WhatsApp" to send image + message together, or tap "Share" on each number individually.
                   </p>
                 )}
               </div>

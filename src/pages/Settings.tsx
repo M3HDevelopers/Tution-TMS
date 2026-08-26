@@ -169,7 +169,7 @@ export default function Settings() {
               </div>
             </Field>
           </div>
-          <div className="flex items-center gap-3 mt-4">
+          <div className="flex flex-col gap-2.5 mt-4 [&>button]:w-full sm:flex-row sm:items-center sm:[&>button]:w-auto">
             <Btn variant="primary" icon="save" disabled={!username.trim() || !password} onClick={() => setAskSecurity(true)}>Save Credentials</Btn>
             <Btn variant="outline" icon="logout" onClick={logout}>Log out now</Btn>
           </div>

@@ -206,8 +206,8 @@ export default function Attendance() {
           <div className="px-4 py-3 bg-warn-50 border-b border-warn-600/20 flex items-center gap-3">
             <span className="w-9 h-9 rounded-[10px] bg-warn-600 text-white flex items-center justify-center shrink-0"><Icon name="bell" size={17} /></span>
             <div className="flex-1">
-              <h2 className="font-display font-bold text-[15px] text-ink-900 leading-tight">Aaj absent — parents ko inform karein?</h2>
-              <p className="text-[11.5px] text-ink-500 mt-0.5">{absentNow.length} student{absentNow.length > 1 ? "s" : ""} nahi aaye · bhejna aapki marzi hai · WhatsApp khulte hi "Sent" mark ho jayega</p>
+              <h2 className="font-display font-bold text-[15px] text-ink-900 leading-tight">Absent today — inform the parents?</h2>
+              <p className="text-[11.5px] text-ink-500 mt-0.5">{absentNow.length} student{absentNow.length > 1 ? "s" : ""} absent · sending is optional · marked "Sent" as soon as WhatsApp opens</p>
             </div>
           </div>
           <div className="divide-y divide-ink-100">
@@ -232,7 +232,7 @@ export default function Attendance() {
                           <button key={g.id}
                             onClick={() => {
                               const w = window.open(waLink(g.phone, absentMessage(state, s)), "_blank", "noopener");
-                              if (w) { setSentAbs((m) => ({ ...m, [key]: true })); toast.push(`${g.name} ko message bhej diya ✓`); }
+                              if (w) { setSentAbs((m) => ({ ...m, [key]: true })); toast.push(`Message sent to ${g.name} ✓`); }
                               else toast.push("Pop-up blocked — allow pop-ups.", "warn");
                             }}
                             disabled={sent}
@@ -254,9 +254,9 @@ export default function Attendance() {
       <section className="card p-5 mt-8 anim-fade-up">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="font-display font-bold text-[16.5px] text-ink-900">Monthly Summary</h2>
-          <div className="flex gap-2">
-            <input type="month" value={summaryMonth} onChange={(e) => setSummaryMonth(e.target.value)} className="h-9 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold" />
-            <TSelect value={summaryClass} onChange={(e) => setSummaryClass(e.target.value)} className="!w-auto min-w-40">
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex">
+            <input type="month" value={summaryMonth} onChange={(e) => setSummaryMonth(e.target.value)} className="h-9 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold w-full" />
+            <TSelect value={summaryClass} onChange={(e) => setSummaryClass(e.target.value)} className="!w-full sm:!w-auto sm:min-w-40">
               <option value="all">All classes</option>
               {classes.map((c) => <option key={c} value={c}>{c}</option>)}
             </TSelect>

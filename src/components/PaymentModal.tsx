@@ -219,7 +219,7 @@ export default function PaymentModal({ open, onClose, studentId, paymentId, onSe
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div><p className="text-[10px] font-bold uppercase tracking-wide text-ink-400">Month charge</p><p className="font-mono text-[13.5px] font-bold text-ink-900 tnum mt-0.5">{fmtMoney(chargeOf(selRec), cur)}</p></div>
                   <div><p className="text-[10px] font-bold uppercase tracking-wide text-ink-400">Already paid</p><p className="font-mono text-[13.5px] font-bold text-mint-600 tnum mt-0.5">{fmtMoney(paidOf(state.payments, selRec.id), cur)}</p></div>
-                  <div><p className="text-[10px] font-bold uppercase tracking-wide text-ink-400">Abhi dena hai</p><p className="font-mono text-[13.5px] font-bold text-flame-600 tnum mt-0.5">{fmtMoney(selBalance, cur)}</p></div>
+                  <div><p className="text-[10px] font-bold uppercase tracking-wide text-ink-400">Due Now</p><p className="font-mono text-[13.5px] font-bold text-flame-600 tnum mt-0.5">{fmtMoney(selBalance, cur)}</p></div>
                 </div>
               </div>
             )}

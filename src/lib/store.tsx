@@ -290,18 +290,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     } catch { /* ignore */ }
   };
 
-  /* Demo load = data + auto-login + activity trail, so the user lands on the dashboard */
+  /**
+   * Demo load — guaranteed to succeed. Data + auto-login + activity trail so the
+   * user lands straight on the dashboard. If the rich seed ever fails, a minimal
+   * valid dataset is used instead so the app never bricks.
+   */
+  const safeDemo = (): DataState => {
+    try {
+      return sanitizeState(buildDemoData() as unknown as Partial<Record<keyof DataState, unknown>>);
+    } catch {
+      const base = emptyData();
+      const sid = uid("stu");
+      base.students = [{ id: sid, name: "Sample Student", level: "Primary", grade: "Class 1", monthlyFee: 1000, feeDueDay: 1, status: "active", photo: null }];
+      base.guardians = [{ id: uid("grd"), studentId: sid, name: "Parent", relation: "Father", phone: "0300-0000000", whatsapp: true, primary: true }];
+      return base;
+    }
+  };
   const loadDemo = () => {
-    const demo = buildDemoData();
-    demo.activity = withActivity(demo, "Demo data loaded — 12 students, 4 months of fees, attendance and receipts.", "backup");
+    const demo = safeDemo();
+    demo.activity = withActivity(demo, "Demo data loaded — students, fees, attendance and receipts.", "backup");
     setState(demo);
     setSession(true);
     try {
       write(SESSION_KEY, true);
+      persistAll(demo);
     } catch { /* ignore */ }
   };
   const resetDemo = () => {
-    const demo = buildDemoData();
+    const demo = safeDemo();
     demo.activity = withActivity({ ...demo, activity: state.activity }, "Demo data reset to a fresh sample set.", "backup");
     setState(demo);
   };

@@ -154,15 +154,15 @@ export default function StudentProfile() {
             </div>
 
             {/* status + danger */}
-            <div className="card p-5 flex flex-wrap items-center gap-3">
-              <div className="flex-1">
-                <h3 className="font-display font-bold text-[14.5px] text-ink-900">Manage Record</h3>
-                <p className="text-[12px] text-ink-400 mt-0.5">Inactive students are skipped by monthly challan generation; their history stays intact.</p>
+            <div className="card p-5">
+              <h3 className="font-display font-bold text-[14.5px] text-ink-900">Manage Record</h3>
+              <p className="text-[12px] text-ink-400 mt-0.5">Inactive students are skipped by monthly challan generation; their history stays intact.</p>
+              <div className="grid grid-cols-2 gap-2.5 mt-4 sm:flex sm:items-center sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">
+                {student.status === "active"
+                  ? <Btn variant="outline" onClick={() => setAskInactive(true)}>Mark Inactive</Btn>
+                  : <Btn variant="success" icon="check" onClick={() => setStatus("active")}>Mark Active</Btn>}
+                <Btn variant="danger" icon="trash" onClick={() => setAskDelete(true)}>Delete Student</Btn>
               </div>
-              {student.status === "active"
-                ? <Btn variant="outline" icon="minus" onClick={() => setAskInactive(true)}>Mark Inactive</Btn>
-                : <Btn variant="success" icon="check" onClick={() => setStatus("active")}>Mark Active</Btn>}
-              <Btn variant="danger" icon="trash" onClick={() => setAskDelete(true)}>Delete Student</Btn>
             </div>
           </div>
 
@@ -174,21 +174,42 @@ export default function StudentProfile() {
             ) : (
               <div className="space-y-3">
                 {guardians.map((g) => (
-                  <div key={g.id} className="rounded-[11px] border border-ink-150 px-3.5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-8 h-8 rounded-[9px] bg-ink-900 text-gold-300 flex items-center justify-center shrink-0"><Icon name="user" size={14} /></span>
+                  <div key={g.id} className="rounded-[12px] border border-ink-150 bg-white overflow-hidden shadow-[0_1px_3px_rgba(14,24,48,0.06)]">
+                    {/* top: avatar + name + badges — poora width use karta hai */}
+                    <div className="px-4 pt-4 pb-3 flex items-center gap-3.5">
+                      <Avatar name={g.name} size={46} className="ring-2 ring-ink-100" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-bold text-ink-900 truncate">{g.name} <span className="text-ink-400 font-semibold text-[11.5px]">· {g.relation}</span></p>
-                        <p className="font-mono text-[11.5px] text-ink-500 tnum">{g.phone}{g.primary && <Badge tone="navy" className="ml-2">Primary</Badge>}</p>
+                        <p className="text-[15px] font-bold text-ink-900 leading-tight truncate">{g.name}</p>
+                        <p className="text-[12px] font-semibold text-ink-400 mt-1">{g.relation}</p>
                       </div>
-                      {!g.whatsapp && <Badge tone="slate">No WhatsApp</Badge>}
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        {g.primary && <Badge tone="gold">Primary</Badge>}
+                        {g.whatsapp ? <Badge tone="green">WhatsApp</Badge> : <Badge tone="slate">No WhatsApp</Badge>}
+                      </div>
                     </div>
+                    {/* number strip — full-width band that fills the card */}
+                    <div className="px-4 pb-3.5">
+                      <div className={`rounded-[10px] px-4 py-3 flex items-center justify-between gap-3 ${g.whatsapp ? "bg-ink-900" : "bg-ink-50 border border-ink-100"}`}>
+                        <span className="flex items-center gap-2.5 min-w-0">
+                          <Icon name="phone" size={15} className={g.whatsapp ? "text-gold-400 shrink-0" : "text-ink-400 shrink-0"} />
+                          <span className={`font-mono text-[15px] font-bold tnum tracking-wide truncate ${g.whatsapp ? "text-gold-300" : "text-ink-700"}`}>{g.phone}</span>
+                        </span>
+                        <a href={`tel:${g.phone.replace(/[^0-9+]/g, "")}`}
+                          className={`inline-flex items-center gap-1.5 h-8 px-3.5 rounded-[8px] text-[12px] font-bold shrink-0 transition-colors ${g.whatsapp ? "bg-gold-500 text-ink-950 hover:bg-gold-400" : "bg-ink-900 text-white hover:bg-ink-700"} press`}>
+                          <Icon name="phone" size={13} /> Call
+                        </a>
+                      </div>
+                    </div>
+                    {/* actions */}
                     {g.whatsapp && (
-                      <div className="flex gap-2 mt-2.5">
-                        <Btn size="sm" variant="wa" icon="whatsapp" onClick={() => window.open(waLink(g.phone, absentMessage(state, student)), "_blank", "noopener")}>Absent Msg</Btn>
-                        <Btn size="sm" variant="outline" icon="phone" onClick={() => window.open(`tel:${g.phone.replace(/[^0-9+]/g, "")}`, "_self")}>Call</Btn>
+                      <div className="px-4 pb-4">
+                        <button onClick={() => window.open(waLink(g.phone, absentMessage(state, student)), "_blank", "noopener")}
+                          className="w-full inline-flex items-center justify-center gap-2 h-9.5 rounded-[9px] bg-[#128c5e] hover:bg-[#0e7a50] text-white text-[12.5px] font-bold transition-colors press">
+                          <Icon name="whatsapp" size={15} /> WhatsApp Message (Absent / General)
+                        </button>
                       </div>
                     )}
+                    {g.notes && <p className="px-4 pb-3.5 -mt-1 text-[11.5px] text-ink-400"><b>Notes:</b> {g.notes}</p>}
                   </div>
                 ))}
               </div>
