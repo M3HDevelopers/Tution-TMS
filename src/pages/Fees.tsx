@@ -86,7 +86,7 @@ export default function Fees() {
     <div>
       <PageHead title="Fees & Payments" sub="Big challan once a month for dues — small receipts every time money comes in"
         actions={<>
-          <TSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="!w-auto min-w-44">
+          <TSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="!w-full sm:!w-auto sm:min-w-44">
             {lastNPeriods(12).map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
           </TSelect>
           <Btn variant="gold" icon="plus" onClick={() => ui.openPayment()}>Record Payment</Btn>
@@ -193,7 +193,7 @@ export default function Fees() {
                               <Row k="Last Date (Due Date)" v={fmtDate(rec.dueDate, df)} />
                             </div>
                           ) : <p className="text-[12.5px] text-ink-400">No fee record for {periodLabel(period)}.</p>}
-                          <div className="flex gap-2 mt-3 flex-wrap items-center [&>*]:grow [&>*]:min-w-0 [&>*]:basis-32 sm:[&>*]:grow-0 sm:[&>*]:basis-auto">
+                          <div className="flex flex-col w-full gap-2 mt-3 [&>*]:w-full sm:flex-row sm:items-center sm:[&>*]:w-auto">
                             {rec && bal > 0 && <Btn size="sm" variant="gold" icon="send" onClick={() => ui.openSlip({ kind: "challan", recordId: rec.id })}>Send Challan</Btn>}
                             {rec && bal <= 0 && !rec.waived && <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-mint-700 bg-mint-50 border border-mint-600/25 rounded-[8px] px-2.5 py-1.5"><Icon name="check" size={14} /> Paid — challan not needed</span>}
                             {rec && !rec.waived && bal > 0 && <Btn size="sm" variant="outline" icon="minus" onClick={() => { setWaiveRec(rec.id); setWaiveReason(""); }}>Fee Maaf Karein</Btn>}

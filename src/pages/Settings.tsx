@@ -180,11 +180,11 @@ export default function Settings() {
         <section className="card p-5 anim-fade-up" style={{ animationDelay: "190ms" }}>
           <h2 className="font-display font-bold text-[16px] text-ink-900 mb-1.5 flex items-center gap-2"><Icon name="save" size={17} className="text-gold-600" /> Your Data</h2>
           <p className="text-[12px] text-ink-400 mb-4">Everything lives in this browser's storage. Export a backup regularly — it takes one click.</p>
-          <div className="flex flex-wrap gap-2.5 [&>button]:grow [&>button]:min-w-0 [&>button]:basis-32 sm:[&>button]:grow-0 sm:[&>button]:basis-auto">
+          <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto sm:gap-2.5 [&>button]:w-full sm:[&>button]:w-auto">
             <Btn variant="gold" icon="download" onClick={exportBackup}>Export Backup</Btn>
             <Btn variant="outline" icon="upload" onClick={() => importRef.current?.click()}>Import Backup</Btn>
             <input ref={importRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { onBackupFile(e.target.files?.[0]); e.target.value = ""; }} />
-            <Btn variant="outline" icon="refresh" onClick={() => setAskReset(true)}>Reset Demo Data</Btn>
+            <Btn variant="outline" icon="refresh" className="col-span-2 sm:col-span-1" onClick={() => setAskReset(true)}>Reset Demo Data</Btn>
           </div>
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             {[["Students", state.students.length], ["Payments", state.payments.length], ["Challans", state.feeRecords.length], ["Attendance", state.attendance.length]].map(([k, v]) => (

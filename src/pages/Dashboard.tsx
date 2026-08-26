@@ -54,7 +54,7 @@ export default function Dashboard() {
               {isHoliday ? "Today is a holiday — the centre is closed." : weeklyOff ? "Today is your weekly off day." : <>Tuition runs <b className="text-gold-300">{timeLabel(state.settings.startTime)} – {timeLabel(state.settings.endTime)}</b> · {active.length} students · {classes.length} classes.</>}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2.5 [&>*]:grow [&>*]:min-w-0 [&>*]:basis-32 sm:[&>*]:grow-0 sm:[&>*]:basis-auto">
+          <div className="flex flex-col w-full gap-2 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto">
             <Btn variant="gold" icon="plus" onClick={() => ui.openStudentForm()}>Add Student</Btn>
             <Btn variant="outline" icon="attendance" className="!bg-ink-800 !text-white !border-ink-700 hover:!bg-ink-700" onClick={() => nav("attendance", { date: today })}>Mark Attendance</Btn>
             <Btn variant="outline" icon="wallet" className="!bg-ink-800 !text-white !border-ink-700 hover:!bg-ink-700" onClick={() => ui.openPayment()}>Record Payment</Btn>

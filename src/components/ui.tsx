@@ -244,7 +244,7 @@ export function Modal({ open, onClose, title, sub, children, footer, wide }: { o
         </div>
         <div className="px-6 py-5 overflow-y-auto scroll-thin overscroll-contain">{children}</div>
         {footer && (
-          <div className="px-6 py-4 border-t border-ink-100 bg-ink-50/60 rounded-b-2xl flex flex-wrap items-center gap-2.5 shrink-0 sm:justify-end [&>*]:grow [&>*]:min-w-0 [&>*]:basis-[calc(50%-0.3125rem)] sm:[&>*]:grow-0 sm:[&>*]:basis-auto">
+          <div className="px-6 py-4 border-t border-ink-100 bg-ink-50/60 rounded-b-2xl flex flex-col gap-2.5 shrink-0 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto">
             {footer}
           </div>
         )}
@@ -355,7 +355,7 @@ export function PageHead({ title, sub, actions }: { title: string; sub?: React.R
         <h1 className="font-display font-bold text-[24px] sm:text-[27px] text-ink-900 leading-tight">{title}</h1>
         {sub && <p className="text-[13px] text-ink-400 mt-1">{sub}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2.5 flex-wrap [&>*]:grow [&>*]:min-w-0 [&>*]:basis-36 sm:[&>*]:grow-0 sm:[&>*]:basis-auto">{actions}</div>}
+      {actions && <div className="flex flex-col w-full gap-2 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto sm:[&>*]:grow-0">{actions}</div>}
     </div>
   );
 }
