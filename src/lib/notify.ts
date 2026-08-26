@@ -44,26 +44,33 @@ export function deriveNotices(state: DataState): NoticeItem[] {
     });
   }
 
-  // challans ready to send for the current month (not fully paid)
+  /*
+   * Real, actionable alerts only:
+   *  1. OVERDUE — due date crossed the grace period and money is still pending.
+   *  2. DUE SOON — due date is within the next 5 days (or inside grace period) with balance left.
+   * Fresh challans of students whose due date is still far away are NOT spammed here —
+   * they are visible on the Fees page when actually needed.
+   */
   for (const r of state.feeRecords.filter((x) => x.period === period)) {
     const student = state.students.find((s) => s.id === r.studentId);
     if (!student || student.status !== "active") continue;
     const bal = balanceOf(r, state.payments);
     if (bal <= 0) continue;
     const st = statusOf(r, state.payments, grace);
+    const lateBy = daysBetween(r.dueDate, today);
     if (st === "overdue") {
       out.push({
         key: `ovd-${r.id}`, kind: "overdue", recordId: r.id, studentId: r.studentId,
         title: `${student.name} — fee overdue`,
-        body: `${fmtMoney(bal, cur)} outstanding · due ${fmtDate(r.dueDate, state.settings.dateFormat)} (${daysBetween(r.dueDate, today)} days late)`,
+        body: `${fmtMoney(bal, cur)} outstanding · due ${fmtDate(r.dueDate, state.settings.dateFormat)} (${lateBy} days late)`,
       });
-    } else {
+    } else if (lateBy >= -grace && lateBy <= 5) {
       out.push({
         key: `chl-${r.id}`, kind: "challan", recordId: r.id, studentId: r.studentId,
-        title: `${student.name} — ${periodLabel(period)} challan ready`,
+        title: `${student.name} — ${periodLabel(period)} fee ${st === "partial" ? "partially paid" : "due"} soon`,
         body: st === "partial"
-          ? `Partially paid · send challan for remaining ${fmtMoney(bal, cur)}.`
-          : `Send the monthly challan · due ${fmtDate(r.dueDate, state.settings.dateFormat)}.`,
+          ? `Remaining ${fmtMoney(bal, cur)} · due date ${fmtDate(r.dueDate, state.settings.dateFormat)}. Send challan for the rest.`
+          : `${fmtMoney(bal, cur)} payable · due date ${fmtDate(r.dueDate, state.settings.dateFormat)}. Challan ready to send.`,
       });
     }
   }

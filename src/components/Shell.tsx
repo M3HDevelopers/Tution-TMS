@@ -413,15 +413,30 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
     toast.push("Timing notice removed");
   };
 
+  /* lock page scroll while the panel is open — only the panel list scrolls */
+  useEffect(() => {
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
+
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-12 w-[min(92vw,400px)] card overflow-hidden z-50 anim-pop">
-        <div className="px-4 py-3 bg-ink-900 flex items-center justify-between">
-          <span className="font-display font-bold text-[14.5px] text-white">Notifications</span>
+      <div className="fixed inset-0 z-40 bg-ink-950/35 anim-fade-in sm:bg-ink-950/20" onClick={onClose} />
+      {/* mobile: centred full-width sheet under the header · desktop: anchored dropdown */}
+      <div className="fixed left-2.5 right-2.5 top-[64px] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-[400px] card overflow-hidden anim-pop shadow-2xl">
+        <div className="px-4 py-3 bg-ink-900 flex items-center justify-between gap-2">
+          <span className="font-display font-bold text-[14.5px] text-white flex items-center gap-2">
+            <Icon name="bell" size={15} className="text-gold-400" /> Notifications
+          </span>
           <Btn size="sm" variant="gold" icon="plus" onClick={() => setComposer(true)}>Timing Change</Btn>
         </div>
-        <div className="max-h-[62vh] overflow-y-auto scroll-thin">
+        <div className="max-h-[58vh] sm:max-h-[62vh] overflow-y-auto scroll-thin overscroll-contain">
           {notices.length === 0 && (
             <p className="text-[12.5px] text-ink-400 text-center px-6 py-10">All clear — no challans pending, no overdue fees, no absentees today.</p>
           )}
