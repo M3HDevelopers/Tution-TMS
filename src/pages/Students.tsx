@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNav, useUi } from "../components/Shell";
 import { Avatar, Badge, Btn, EmptyState, FeeStatusBadge, Icon, IconBtn, PageHead, SearchBox, TSelect, useToast } from "../components/ui";
-import { balanceOf, paidOf, statusOf } from "../lib/fee";
+import { balanceOf, paidOf, statusOf, studentOutstanding } from "../lib/fee";
 import { useStore } from "../lib/store";
 import { currentPeriod, fmtDate, fmtMoney, naturalCompare, num, periodLabel } from "../lib/utils";
 
@@ -45,14 +45,15 @@ export default function Students() {
       const paid = rec ? paidOf(state.payments, rec.id) : 0;
       const due = rec ? balanceOf(rec, state.payments) : 0;
       const st = rec ? statusOf(rec, state.payments, grace) : null;
-      return { s, rec, paid, due, st };
+      const out = studentOutstanding(state, s.id);
+      return { s, rec, paid, due, st, out };
     });
-    if (feeFilter === "clear") return enriched.filter((r) => r.due <= 0);
-    if (feeFilter === "dues") return enriched.filter((r) => r.due > 0);
+    if (feeFilter === "clear") return enriched.filter((r) => r.out <= 0);
+    if (feeFilter === "dues") return enriched.filter((r) => r.out > 0);
     enriched.sort((a, b) => {
       if (sort === "name") return a.s.name.localeCompare(b.s.name);
       if (sort === "fee") return b.s.monthlyFee - a.s.monthlyFee;
-      if (sort === "due") return b.due - a.due;
+      if (sort === "due") return b.out - a.out;
       return (b.s.joiningDate ?? "").localeCompare(a.s.joiningDate ?? "");
     });
     return enriched;
@@ -138,7 +139,7 @@ export default function Students() {
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 stagger">
-            {rows.map(({ s, rec, paid, due, st }) => {
+            {rows.map(({ s, rec, paid, due, st, out }) => {
               const guards = state.guardians.filter((g) => g.studentId === s.id).sort((a, b) => Number(b.primary) - Number(a.primary));
               const g0 = guards[0];
               return (
@@ -176,6 +177,12 @@ export default function Students() {
                     </div>
                   </div>
 
+                  {out > due && (
+                    <p className="mx-4 mt-2 text-[11px] font-bold text-flame-700 bg-flame-50 border border-flame-100 rounded-[8px] px-2.5 py-1.5 tnum anim-fade-in">
+                      Purane mahino ka bacha: {fmtMoney(out - due, cur)} · Total due {fmtMoney(out, cur)}
+                    </p>
+                  )}
+
                   {/* guardian */}
                   <div className="flex items-center gap-2.5 px-4 py-2.5 mt-3 bg-ink-50/40 border-y border-ink-100">
                     <Icon name={g0?.whatsapp ? "whatsapp" : "phone"} size={15} className={g0 ? (g0.whatsapp ? "text-[#128c5e]" : "text-ink-400") : "text-flame-500"} />
@@ -192,10 +199,13 @@ export default function Students() {
 
                   {/* actions */}
                   <div className="grid grid-cols-4 gap-1.5 px-3 py-2.5">
-                    <MiniAction icon="wallet" label="Pay" onClick={() => ui.openPayment(s.id)} />
-                    <MiniAction icon="slips" label={due > 0 ? "Challan" : "Paid"} muted={due <= 0} onClick={() => {
-                      if (due <= 0) { toast.push(`${s.name} is fully paid — no challan needed.`, "warn"); return; }
-                      const open = state.feeRecords.filter((r) => r.studentId === s.id).sort((a, b) => a.period.localeCompare(b.period)).find((r) => balanceOf(r, state.payments) > 0);
+                    <MiniAction icon="wallet" label={out > 0 ? "Pay" : "Clear"} muted={out <= 0} onClick={() => {
+                      if (out <= 0) { toast.push(`${s.name} ki saari fees paid hain — payment nahi ho sakti.`, "warn"); return; }
+                      ui.openPayment(s.id);
+                    }} />
+                    <MiniAction icon="slips" label={out > 0 ? "Challan" : "Paid"} muted={out <= 0} onClick={() => {
+                      if (out <= 0) { toast.push(`${s.name} is fully paid — no challan needed.`, "warn"); return; }
+                      const open = state.feeRecords.filter((r) => r.studentId === s.id).sort((a, b) => a.period.localeCompare(b.period)).find((r) => balanceOf(r, state.payments) > 0 && !r.waived);
                       if (open) ui.openSlip({ kind: "challan", recordId: open.id });
                     }} />
                     <MiniAction icon="edit" label="Edit" onClick={() => ui.openStudentForm({ editId: s.id })} />

@@ -23,6 +23,7 @@ export default function Attendance() {
   const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
   const [summaryMonth, setSummaryMonth] = useState(monthKeyOf(todayISO()));
   const [summaryClass, setSummaryClass] = useState("all");
+  const [sentAbs, setSentAbs] = useState<Record<string, boolean>>({});
 
   const wd = weekdayIdx(date);
   const allHoliday = state.holidays.find((h) => h.date === date && h.scope === "all");
@@ -46,6 +47,7 @@ export default function Attendance() {
     const d: Record<string, AttendanceStatus> = {};
     state.attendance.filter((a) => a.date === date).forEach((a) => (d[a.studentId] = a.status));
     setDraft(d);
+    setSentAbs({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
@@ -197,26 +199,52 @@ export default function Attendance() {
 
       {/* absent notify panel */}
       {!blocked && absentNow.length > 0 && (
-        <div className="card mt-5 p-5 border-warn-600/25 anim-fade-up">
-          <h2 className="font-display font-bold text-[15.5px] text-ink-900 mb-1 flex items-center gap-2"><Icon name="bell" size={16} className="text-warn-600" /> Absent today — notify parents?</h2>
-          <p className="text-[12.5px] text-ink-400 mb-3.5">Completely optional. A ready WhatsApp message opens for each guardian number that is saved.</p>
-          <div className="space-y-2">
+        <section className="card mt-5 overflow-hidden anim-fade-up">
+          <div className="px-4 py-3 bg-warn-50 border-b border-warn-600/20 flex items-center gap-3">
+            <span className="w-9 h-9 rounded-[10px] bg-warn-600 text-white flex items-center justify-center shrink-0"><Icon name="bell" size={17} /></span>
+            <div className="flex-1">
+              <h2 className="font-display font-bold text-[15px] text-ink-900 leading-tight">Aaj absent — parents ko inform karein?</h2>
+              <p className="text-[11.5px] text-ink-500 mt-0.5">{absentNow.length} student{absentNow.length > 1 ? "s" : ""} nahi aaye · bhejna aapki marzi hai · WhatsApp khulte hi "Sent" mark ho jayega</p>
+            </div>
+          </div>
+          <div className="divide-y divide-ink-100">
             {absentNow.map((s) => {
               const wg = whatsappGuardians(state, s.id);
               return (
-                <div key={s.id} className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-ink-150 px-3.5 py-2.5">
-                  <Avatar name={s.name} size={30} />
-                  <span className="text-[13px] font-bold text-ink-900 flex-1 min-w-32">{s.name}</span>
-                  {wg.length === 0 ? (
-                    <span className="text-[11.5px] font-semibold text-ink-400">No WhatsApp number saved — skipped</span>
-                  ) : wg.map((g) => (
-                    <Btn key={g.id} size="sm" variant="wa" icon="whatsapp" onClick={() => window.open(waLink(g.phone, absentMessage(state, s)), "_blank", "noopener")}>{g.name}</Btn>
-                  ))}
+                <div key={s.id} className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={s.name} size={36} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13.5px] font-bold text-ink-900 truncate">{s.name}</p>
+                      <p className="text-[11px] text-ink-400 mt-0.5">{s.grade} · absent {fmtDate(date, df)}</p>
+                    </div>
+                    {wg.length === 0 && <span className="text-[11px] font-bold text-flame-600 bg-flame-50 border border-flame-100 rounded-[8px] px-2 py-1">No WhatsApp number</span>}
+                  </div>
+                  {wg.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5 pl-[48px]">
+                      {wg.map((g) => {
+                        const key = `${s.id}:${g.id}`;
+                        const sent = !!sentAbs[key];
+                        return (
+                          <button key={g.id}
+                            onClick={() => {
+                              const w = window.open(waLink(g.phone, absentMessage(state, s)), "_blank", "noopener");
+                              if (w) { setSentAbs((m) => ({ ...m, [key]: true })); toast.push(`${g.name} ko message bhej diya ✓`); }
+                              else toast.push("Pop-up blocked — allow pop-ups.", "warn");
+                            }}
+                            disabled={sent}
+                            className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[11.5px] font-bold transition-all press ${sent ? "bg-mint-50 text-mint-700 border border-mint-600/30 cursor-default" : "bg-[#128c5e] text-white hover:bg-[#0e7a50]"}`}>
+                            <Icon name={sent ? "check" : "whatsapp"} size={13} /> {sent ? "Sent ✓" : g.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        </div>
+        </section>
       )}
 
       {/* monthly summary */}

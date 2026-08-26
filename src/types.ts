@@ -84,6 +84,7 @@ export interface FeeRecord {
   lateFee: number;
   adjustment: number;
   waived: boolean;
+  waiveReason?: string;        // required when the tutor forgives a month's fee
   lateFeeApplied: boolean;
   createdAt: string;
 }
