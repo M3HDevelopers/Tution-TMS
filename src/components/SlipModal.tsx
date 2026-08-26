@@ -30,18 +30,22 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
 
   const model = useMemo(() => {
     if (!target) return null;
-    if (target.kind === "challan") {
-      const rec = state.feeRecords.find((r) => r.id === target.recordId);
-      return rec ? buildChallanModel(state, rec) : null;
+    try {
+      if (target.kind === "challan") {
+        const rec = (state.feeRecords ?? []).find((r) => r.id === target.recordId);
+        return rec ? buildChallanModel(state, rec) : null;
+      }
+      const pay = (state.payments ?? []).find((p) => p.id === target.paymentId);
+      return pay ? buildReceiptModel(state, pay) : null;
+    } catch {
+      return null;
     }
-    const pay = state.payments.find((p) => p.id === target.paymentId);
-    return pay ? buildReceiptModel(state, pay) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetKey]);
 
   const studentId = target?.kind === "challan"
-    ? state.feeRecords.find((r) => r.id === (target as { recordId?: string }).recordId)?.studentId
-    : state.payments.find((p) => p.id === (target as { paymentId?: string }).paymentId)?.studentId;
+    ? (state.feeRecords ?? []).find((r) => r.id === (target as { recordId?: string }).recordId)?.studentId
+    : (state.payments ?? []).find((p) => p.id === (target as { recordId?: string; paymentId?: string }).paymentId)?.studentId;
 
   const guardians = useMemo(
     () => (studentId ? state.guardians.filter((g) => g.studentId === studentId).sort((a, b) => Number(b.primary) - Number(a.primary)) : []),
@@ -53,11 +57,13 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
   useEffect(() => {
     if (!targetKey || !model) { setImage(""); setMsg(""); setSel([]); loggedRef.current = false; return; }
     loggedRef.current = false;
-    const t1 = setTimeout(() => setImage(renderSlip(model)), 60);
-    const t2 = setTimeout(() => setImage(renderSlip(model)), 650);
+    const safeRender = () => { try { setImage(renderSlip(model)); } catch { /* preview stays as placeholder */ } };
+    const t1 = setTimeout(safeRender, 60);
+    const t2 = setTimeout(safeRender, 650);
+    const payRec = (state.payments ?? []).find((p) => p.id === (target as { paymentId?: string }).paymentId);
     setMsg(model.kind === "challan"
       ? challanMessage(state, model)
-      : receiptMessage(state, state.payments.find((p) => p.id === (target as { paymentId?: string }).paymentId)!));
+      : payRec ? receiptMessage(state, payRec) : "");
     const prim = waGuards.filter((g) => g.primary);
     setSel((prim.length ? prim : waGuards.slice(0, 1)).map((g) => g.id));
     return () => { clearTimeout(t1); clearTimeout(t2); };

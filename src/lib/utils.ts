@@ -21,6 +21,7 @@ export function todayISO(): string {
   return toISO(new Date());
 }
 export function parseISO(iso: string): Date {
+  if (typeof iso !== "string" || !iso.includes("-")) return new Date();
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
@@ -30,7 +31,8 @@ export function addDays(iso: string, n: number): string {
   return toISO(d);
 }
 export function daysBetween(a: string, b: string): number {
-  return Math.round((parseISO(b).getTime() - parseISO(a).getTime()) / 86400000);
+  const ms = parseISO(b).getTime() - parseISO(a).getTime();
+  return Number.isFinite(ms) ? Math.round(ms / 86400000) : 0;
 }
 export function weekdayIdx(iso: string): number {
   return parseISO(iso).getDay();
@@ -82,7 +84,7 @@ export function fmtDate(iso: string | undefined, format: DateFormat = "dmy"): st
 }
 
 export function fmtMoney(n: number, currency = "Rs"): string {
-  const v = Math.round(n);
+  const v = Math.round(Number.isFinite(n) ? n : 0);
   const neg = v < 0;
   return `${neg ? "−" : ""}${currency} ${Math.abs(v).toLocaleString("en-US")}`;
 }
