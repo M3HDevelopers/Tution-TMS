@@ -20,7 +20,6 @@ export default function Students() {
   const [status, setStatus] = useState("active");
   const [feeFilter, setFeeFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("name");
-  const [selected, setSelected] = useState<string[]>([]);
 
   const classes = useMemo(
     () => Array.from(new Set(state.students.map((s) => s.grade).filter(Boolean))).sort(naturalCompare),
@@ -58,18 +57,6 @@ export default function Students() {
     });
     return enriched;
   }, [state, q, cls, status, feeFilter, sort, period, grace]);
-
-  const toggleSel = (id: string) => setSelected((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]));
-
-  const setManyStatus = (st: "active" | "inactive") => {
-    const students = state.students.map((s) => (selected.includes(s.id) ? { ...s, status: st } : s));
-    patchAll(students);
-    toast.push(`${selected.length} student${selected.length > 1 ? "s" : ""} marked ${st}`);
-    setSelected([]);
-  };
-
-  const { patch } = useStore();
-  const patchAll = (students: typeof state.students) => patch({ students });
 
   const exportCSV = () => {
     const head = ["ID", "Name", "Class", "Level", "School", "Guardian", "Phone", "Monthly Fee", "Fee Due Day", "Paid (month)", "Due (month)", "Due Date", "Joining", "Status", "Guardians"];
@@ -123,13 +110,6 @@ export default function Students() {
             <option value="fee">Sort: Monthly fee</option>
           </TSelect>
         </div>
-        {selected.length > 0 && (
-          <span className="flex items-center gap-2 anim-fade-in w-full sm:w-auto [&>button]:grow sm:[&>button]:grow-0">
-            <Badge tone="navy">{selected.length} selected</Badge>
-            <Btn size="sm" variant="outline" onClick={() => setManyStatus("inactive")}>Mark Inactive</Btn>
-            <Btn size="sm" variant="outline" onClick={() => setManyStatus("active")}>Mark Active</Btn>
-          </span>
-        )}
       </div>
 
       {/* list */}
@@ -149,7 +129,6 @@ export default function Students() {
                 <div key={s.id} className="card overflow-hidden card-hover">
                   {/* head — tap to open profile */}
                   <div onClick={() => nav("student", { id: s.id })} className="flex items-center gap-3 px-4 pt-3.5 pb-3 cursor-pointer">
-                    <input type="checkbox" onClick={(e) => e.stopPropagation()} className="accent-[#0e1830] w-4 h-4 shrink-0 cursor-pointer" checked={selected.includes(s.id)} onChange={() => toggleSel(s.id)} aria-label={`Select ${s.name}`} />
                     {s.photo ? <img src={s.photo} alt="" className="w-11 h-11 rounded-[11px] object-cover shrink-0" /> : <Avatar name={s.name} size={44} />}
                     <div className="flex-1 min-w-0">
                       <p className="text-[15.5px] font-bold leading-tight text-ink-900 truncate">{s.name}</p>

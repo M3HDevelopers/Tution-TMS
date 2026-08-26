@@ -491,26 +491,41 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
                     {n.kind === "timing" && notice && isOpen && (
                       <div className="mt-2.5 rounded-[10px] border border-ink-150 bg-ink-50/70 p-3 anim-fade-in">
                         <pre className="whitespace-pre-wrap font-sans text-[11.5px] text-ink-700 leading-relaxed">{notice.message}</pre>
-                        <p className="text-[10.5px] font-bold uppercase tracking-wide text-ink-400 mt-3 mb-1.5">Send to all contacts ({whatsappGuardians(state, "").length >= 0 ? state.guardians.filter((g) => g.whatsapp && g.phone.trim()).length : 0})</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {state.guardians.filter((g) => g.whatsapp && g.phone.trim()).slice(0, 40).map((g) => (
-                            <button key={g.id} onClick={() => window.open(waLink(g.phone, notice.message), "_blank", "noopener")}
-                              className="inline-flex items-center gap-1 h-7 px-2 rounded-[7px] bg-[#128c5e] text-white text-[10.5px] font-bold press hover:bg-[#0e7a50]">
-                              <Icon name="whatsapp" size={11} /> {g.name}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                          <Btn size="sm" variant="success" icon="check" onClick={() => {
-                            const sentTo = state.guardians.filter((g) => g.whatsapp && g.phone.trim()).map((g) => g.name);
-                            patch({
-                              notifications: state.notifications.map((x) => (x.id === notice.id ? { ...x, sentTo } : x)),
-                              activity: withActivity({ ...state }, `Timing change notice "${notice.title}" marked sent to ${sentTo.length} contacts.`, "notice"),
-                            });
-                            toast.push(`Notice marked as sent to ${sentTo.length} contacts`);
-                          }}>Mark as Sent</Btn>
-                          <Btn size="sm" variant="ghost" icon="trash" onClick={() => deleteNotice(notice.id)}>Remove</Btn>
-                        </div>
+                        {(() => {
+                          const contacts = state.guardians.filter((g) => g.whatsapp && g.phone.trim()).slice(0, 40);
+                          const sendAll = () => {
+                            if (contacts.length === 0) { toast.push("Koi WhatsApp number saved nahi hai.", "warn"); return; }
+                            /* ek hi button — sab ke WhatsApp chats message ke saath khulte hain aur notice khud "sent" mark ho jata hai */
+                            contacts.forEach((g, i) => setTimeout(() => window.open(waLink(g.phone, notice.message), "_blank", "noopener"), i * 500));
+                            const sentTo = contacts.map((g) => g.name);
+                            const next = { ...state, notifications: state.notifications.map((x) => (x.id === notice.id ? { ...x, sentTo } : x)) };
+                            patch({ notifications: next.notifications, activity: withActivity(next, `Timing change notice "${notice.title}" sent on WhatsApp to ${sentTo.length} contacts.`, "notice") });
+                            toast.push(`${contacts.length} WhatsApp chats khul rahi hain — sent mark ho gaya ✓`);
+                          };
+                          return (
+                            <>
+                              <p className="text-[10.5px] font-bold uppercase tracking-wide text-ink-400 mt-3 mb-1.5">Recipients ({contacts.length})</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {contacts.map((g) => (
+                                  <button key={g.id} onClick={() => window.open(waLink(g.phone, notice.message), "_blank", "noopener")}
+                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-[7px] bg-[#128c5e] text-white text-[10.5px] font-bold press hover:bg-[#0e7a50]">
+                                    <Icon name="whatsapp" size={11} /> {g.name}
+                                  </button>
+                                ))}
+                                {contacts.length === 0 && <span className="text-[11px] text-flame-600 font-semibold">No WhatsApp numbers saved yet.</span>}
+                              </div>
+                              <div className="flex flex-col gap-2 mt-3 [&>*]:w-full">
+                                <Btn size="sm" variant="wa" icon="whatsapp" onClick={sendAll} disabled={contacts.length === 0}>Send Message to All ({contacts.length})</Btn>
+                                {notice.sentTo.length > 0 && (
+                                  <span className="inline-flex items-center justify-center gap-1.5 text-[11.5px] font-bold text-mint-700 bg-mint-50 border border-mint-600/25 rounded-[8px] py-1.5 anim-tick">
+                                    <Icon name="check" size={13} /> Sent to {notice.sentTo.length} contacts
+                                  </span>
+                                )}
+                                <Btn size="sm" variant="ghost" icon="trash" onClick={() => deleteNotice(notice.id)}>Remove Notice</Btn>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -571,6 +586,17 @@ function TimingComposer({ open, onClose }: { open: boolean; onClose: () => void 
           <span className="block text-[11.5px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-1.5">For how many days?</span>
           <TInput type="number" min={1} max={60} value={days} onChange={(e) => setDays(parseInt(e.target.value, 10) || 1)} />
         </label>
+        <div className="sm:col-span-2">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-2">Quick pick — days</span>
+          <div className="flex flex-wrap gap-1.5">
+            {[1, 2, 3, 5, 7, 15].map((d) => (
+              <button key={d} type="button" onClick={() => setDays(d)}
+                className={`h-8 px-3.5 rounded-[8px] text-[12px] font-bold border transition-colors press ${days === d ? "bg-ink-900 text-gold-300 border-ink-900" : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"}`}>
+                {d} day{d > 1 ? "s" : ""}
+              </button>
+            ))}
+          </div>
+        </div>
         <label className="block">
           <span className="block text-[11.5px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-1.5">New start time</span>
           <TInput type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
@@ -579,6 +605,17 @@ function TimingComposer({ open, onClose }: { open: boolean; onClose: () => void 
           <span className="block text-[11.5px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-1.5">New end time</span>
           <TInput type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
         </label>
+        <div className="sm:col-span-2">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-2">Quick pick — timing</span>
+          <div className="flex flex-wrap gap-1.5">
+            {[["08:00", "10:00"], ["14:00", "16:00"], ["15:00", "17:00"], ["16:00", "18:00"], ["17:00", "19:00"], ["18:00", "20:00"]].map(([a, b]) => (
+              <button key={a} type="button" onClick={() => { setStartTime(a); setEndTime(b); }}
+                className={`h-8 px-3 rounded-[8px] text-[12px] font-bold border transition-colors press tnum ${startTime === a && endTime === b ? "bg-ink-900 text-gold-300 border-ink-900" : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"}`}>
+                {timeLabel(a)} – {timeLabel(b)}
+              </button>
+            ))}
+          </div>
+        </div>
         <label className="block sm:col-span-2">
           <span className="block text-[11.5px] font-bold uppercase tracking-[0.08em] text-ink-500 mb-1.5">Extra note (optional)</span>
           <TInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Because of load-shedding, class will end early." />
