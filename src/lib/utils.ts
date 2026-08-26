@@ -73,8 +73,9 @@ export function daysInPeriod(period: string): number {
 }
 
 export function fmtDate(iso: string | undefined, format: DateFormat = "dmy"): string {
-  if (!iso) return "—";
+  if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return "—";
   const d = parseISO(iso);
+  if (Number.isNaN(d.getTime())) return "—";
   if (format === "iso") return iso;
   if (format === "mdy") return `${MONTHS_S[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   return `${d.getDate()} ${MONTHS_S[d.getMonth()]} ${d.getFullYear()}`;
@@ -97,7 +98,7 @@ export function clampDay(period: string, day: number): string {
 }
 
 export function timeLabel(t: string): string {
-  if (!t) return "";
+  if (!t || typeof t !== "string" || !t.includes(":")) return "";
   const [h, m] = t.split(":").map(Number);
   const ap = h >= 12 ? "PM" : "AM";
   const hh = h % 12 === 0 ? 12 : h % 12;

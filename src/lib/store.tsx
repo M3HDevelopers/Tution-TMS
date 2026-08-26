@@ -32,7 +32,69 @@ function write(key: string, value: unknown) {
   }
 }
 
+/* Harden any loaded collection so old/corrupt localStorage can never crash the app. */
+function sanitize(raw: DataState): DataState {
+  const fresh = emptyData();
+  const arr = <T,>(v: unknown, fb: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fb);
+  const s = raw;
+  s.students = arr(s.students, fresh.students)
+    .filter((x) => x && typeof x.name === "string")
+    .map((x) => ({
+      ...x,
+      id: String(x.id ?? uid("stu")),
+      grade: String(x.grade ?? x.level ?? "Class"),
+      level: x.level ?? "Primary",
+      monthlyFee: typeof x.monthlyFee === "number" && Number.isFinite(x.monthlyFee) ? Math.max(0, x.monthlyFee) : DEFAULT_SETTINGS.feePolicy.defaultFee,
+      feeDueDay: typeof x.feeDueDay === "number" && x.feeDueDay >= 1 && x.feeDueDay <= 28 ? x.feeDueDay : 1,
+      status: x.status === "inactive" ? ("inactive" as const) : ("active" as const),
+      photo: typeof x.photo === "string" ? x.photo : null,
+    }));
+  s.guardians = arr(s.guardians, fresh.guardians)
+    .filter((g) => g && typeof g.name === "string" && typeof g.phone === "string")
+    .map((g) => ({ ...g, whatsapp: g.whatsapp !== false, primary: g.primary === true, studentId: String(g.studentId ?? "") }));
+  s.attendance = arr(s.attendance, fresh.attendance).filter((a) => a && typeof a.date === "string" && typeof a.studentId === "string");
+  s.holidays = arr(s.holidays, fresh.holidays).filter((h) => h && typeof h.date === "string");
+  s.feeRecords = arr(s.feeRecords, fresh.feeRecords)
+    .filter((r) => r && typeof r.period === "string" && typeof r.studentId === "string")
+    .map((r) => ({
+      ...r,
+      baseFee: typeof r.baseFee === "number" && Number.isFinite(r.baseFee) ? r.baseFee : 0,
+      lateFee: typeof r.lateFee === "number" && Number.isFinite(r.lateFee) ? r.lateFee : 0,
+      adjustment: typeof r.adjustment === "number" && Number.isFinite(r.adjustment) ? r.adjustment : 0,
+      waived: r.waived === true,
+      lateFeeApplied: r.lateFeeApplied === true,
+    }));
+  s.payments = arr(s.payments, fresh.payments)
+    .filter((p) => p && typeof p.amount === "number" && typeof p.studentId === "string")
+    .map((p) => ({ ...p, receiptNo: String(p.receiptNo ?? "RCP-0"), state: p.state ?? "recorded" }));
+  s.slips = arr(s.slips, fresh.slips).filter((x) => x && typeof x.no === "string");
+  s.notifications = arr(s.notifications, fresh.notifications);
+  s.activity = arr(s.activity, fresh.activity);
+  s.batches = arr(s.batches, []);
+  s.settings = { ...DEFAULT_SETTINGS, ...(s.settings ?? ({} as DataState["settings"])) };
+  s.settings.feePolicy = { ...DEFAULT_SETTINGS.feePolicy, ...(s.settings.feePolicy ?? {}) };
+  if (!Array.isArray(s.settings.weeklyOffs)) s.settings.weeklyOffs = [...DEFAULT_SETTINGS.weeklyOffs];
+  if (typeof s.settings.startTime !== "string" || !s.settings.startTime) s.settings.startTime = DEFAULT_SETTINGS.startTime;
+  if (typeof s.settings.endTime !== "string" || !s.settings.endTime) s.settings.endTime = DEFAULT_SETTINGS.endTime;
+  if (typeof s.settings.challanTemplate !== "string" || !s.settings.challanTemplate) s.settings.challanTemplate = DEFAULT_SETTINGS.challanTemplate;
+  if (typeof s.settings.username !== "string" || !s.settings.username) s.settings.username = "tutor";
+  if (typeof s.settings.password !== "string" || !s.settings.password) s.settings.password = "tutor123";
+  return s;
+}
+
 function loadState(): DataState {
+  try {
+    return sanitize(loadRaw());
+  } catch {
+    try {
+      return sanitize(emptyData());
+    } catch {
+      return emptyData();
+    }
+  }
+}
+
+function loadRaw(): DataState {
   const version = read<number>(KEYS.version, 0);
   const fresh = emptyData();
   if (version < SCHEMA_VERSION) {
