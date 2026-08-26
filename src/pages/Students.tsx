@@ -139,7 +139,7 @@ export default function Students() {
                     {st ? <FeeStatusBadge status={st} /> : <Badge tone="slate">New</Badge>}
                   </div>
 
-                  {/* mini ledger — sab amounts ek hi nazar mein */}
+                  {/* mini ledger — all amounts at a glance */}
                   <div className="mx-4 rounded-[10px] border border-ink-100 bg-ink-50/60 grid grid-cols-4 divide-x divide-ink-100">
                     <div className="px-2.5 py-2">
                       <span className="block text-[9px] font-bold uppercase tracking-[0.08em] text-ink-400">Monthly</span>
@@ -161,7 +161,7 @@ export default function Students() {
 
                   {out > due && (
                     <p className="mx-4 mt-2 text-[11px] font-bold text-flame-700 bg-flame-50 border border-flame-100 rounded-[8px] px-2.5 py-1.5 tnum anim-fade-in">
-                      Purane mahino ka bacha: {fmtMoney(out - due, cur)} · Total due {fmtMoney(out, cur)}
+                      Previous months' balance: {fmtMoney(out - due, cur)} · Total due {fmtMoney(out, cur)}
                     </p>
                   )}
 
@@ -182,7 +182,7 @@ export default function Students() {
                   {/* actions */}
                   <div className="grid grid-cols-4 gap-1.5 px-3 py-2.5">
                     <MiniAction icon="wallet" label={out > 0 ? "Pay" : "Clear"} muted={out <= 0} onClick={() => {
-                      if (out <= 0) { toast.push(`${s.name} ki saari fees paid hain — payment nahi ho sakti.`, "warn"); return; }
+                      if (out <= 0) { toast.push(`${s.name} has no pending dues — nothing to collect.`, "warn"); return; }
                       ui.openPayment(s.id);
                     }} />
                     <MiniAction icon="slips" label={out > 0 ? "Challan" : "Paid"} muted={out <= 0} onClick={() => {

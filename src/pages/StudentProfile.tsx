@@ -159,7 +159,7 @@ export default function StudentProfile() {
               <p className="text-[12px] text-ink-400 mt-0.5">Inactive students are skipped by monthly challan generation; their history stays intact.</p>
               <div className="grid grid-cols-2 gap-2.5 mt-4 sm:flex sm:items-center sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">
                 {student.status === "active"
-                  ? <Btn variant="outline" icon="minus" onClick={() => setAskInactive(true)}>Mark Inactive</Btn>
+                  ? <Btn variant="outline" onClick={() => setAskInactive(true)}>Mark Inactive</Btn>
                   : <Btn variant="success" icon="check" onClick={() => setStatus("active")}>Mark Active</Btn>}
                 <Btn variant="danger" icon="trash" onClick={() => setAskDelete(true)}>Delete Student</Btn>
               </div>
@@ -187,7 +187,7 @@ export default function StudentProfile() {
                         {g.whatsapp ? <Badge tone="green">WhatsApp</Badge> : <Badge tone="slate">No WhatsApp</Badge>}
                       </div>
                     </div>
-                    {/* number strip — box ko bharne wali full-width patti */}
+                    {/* number strip — full-width band that fills the card */}
                     <div className="px-4 pb-3.5">
                       <div className={`rounded-[10px] px-4 py-3 flex items-center justify-between gap-3 ${g.whatsapp ? "bg-ink-900" : "bg-ink-50 border border-ink-100"}`}>
                         <span className="flex items-center gap-2.5 min-w-0">

@@ -494,13 +494,13 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
                         {(() => {
                           const contacts = state.guardians.filter((g) => g.whatsapp && g.phone.trim()).slice(0, 40);
                           const sendAll = () => {
-                            if (contacts.length === 0) { toast.push("Koi WhatsApp number saved nahi hai.", "warn"); return; }
+                            if (contacts.length === 0) { toast.push("No WhatsApp numbers saved for any student.", "warn"); return; }
                             /* ek hi button — sab ke WhatsApp chats message ke saath khulte hain aur notice khud "sent" mark ho jata hai */
                             contacts.forEach((g, i) => setTimeout(() => window.open(waLink(g.phone, notice.message), "_blank", "noopener"), i * 500));
                             const sentTo = contacts.map((g) => g.name);
                             const next = { ...state, notifications: state.notifications.map((x) => (x.id === notice.id ? { ...x, sentTo } : x)) };
                             patch({ notifications: next.notifications, activity: withActivity(next, `Timing change notice "${notice.title}" sent on WhatsApp to ${sentTo.length} contacts.`, "notice") });
-                            toast.push(`${contacts.length} WhatsApp chats khul rahi hain — sent mark ho gaya ✓`);
+                            toast.push(`${contacts.length} WhatsApp chats opening — marked as sent ✓`);
                           };
                           return (
                             <>

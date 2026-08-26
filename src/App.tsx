@@ -67,9 +67,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
           <span className="inline-flex w-14 h-14 rounded-2xl bg-flame-50 text-flame-600 items-center justify-center mx-auto">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.5 2.8 19.5h18.4z" /><path d="M12 9.5v4.5M12 16.8v.01" /></svg>
           </span>
-          <h1 className="font-display font-extrabold text-[22px] text-ink-900 mt-4">Kuch gadbad ho gayi</h1>
+          <h1 className="font-display font-extrabold text-[22px] text-ink-900 mt-4">Something went wrong</h1>
           <p className="text-[13px] text-ink-500 mt-2 leading-relaxed">
-            App load hote waqt ek error aaya. Zyada tar yeh purane browser data ki wajah se hota hai. Pehle <b>Reload</b> try karein — agar phir bhi na chale to neeche wala button local data reset kar dega.
+            An error occurred while loading the app. This is usually caused by old browser data. Try <b>Reload</b> first — if it still fails, the button below will reset your local data.
           </p>
           <p className="font-mono text-[10.5px] text-ink-300 mt-3 break-all">{String(this.state.error.message ?? this.state.error).slice(0, 160)}</p>
           <div className="flex justify-center gap-2.5 mt-6">

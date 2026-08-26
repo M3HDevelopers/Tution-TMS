@@ -126,7 +126,7 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
     a.href = URL.createObjectURL(file);
     a.download = fileName;
     a.click();
-    toast.push("Image download ho rahi hai — WhatsApp chat mein attach kar dein", "warn");
+    toast.push("Image downloading — attach it in the WhatsApp chat", "warn");
     const w = window.open(waLink(phone, msg), "_blank", "noopener");
     if (w) markSent([phone]);
     else toast.push("Pop-up blocked — allow pop-ups to open WhatsApp.", "warn");
@@ -176,7 +176,7 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
             </button>
           ) : (
             <div className="rounded-[10px] border border-ink-150 bg-ink-50/70 px-3 py-2.5 text-[11.5px] text-ink-500 leading-relaxed">
-              Is browser mein direct attach support nahi hai — chat khulte hi image download ho jayegi, use chat mein attach kar dein.
+              This browser doesn't support direct image attach — the image downloads when the chat opens, then attach it in the chat.
             </div>
           )}
 
@@ -207,7 +207,7 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
                 })}
                 {selected.length > 1 && (
                   <p className="text-[11px] text-ink-400 leading-relaxed px-1">
-                    {selected.length} numbers selected — "Share on WhatsApp" se image+message ek saath bhejein, ya har number ka "Open" individually dabayein.
+                    {selected.length} numbers selected — use "Share on WhatsApp" to send image + message together, or tap "Share" on each number individually.
                   </p>
                 )}
               </div>
