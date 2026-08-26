@@ -67,7 +67,7 @@ export default function Reports() {
 
       {tab === "collection" && (
         <div className="space-y-5 anim-fade-up">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 [&>*]:grow [&>*]:min-w-0 [&>*]:basis-32 sm:[&>*]:grow-0 sm:[&>*]:basis-auto">
             <TSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="!w-auto min-w-44">
               {lastNPeriods(12).map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
             </TSelect>
@@ -161,13 +161,13 @@ export default function Reports() {
 
       {tab === "attendance" && (
         <div className="space-y-4 anim-fade-up">
-          <div className="flex flex-wrap gap-3 items-center">
-            <input type="month" value={attMonth} onChange={(e) => setAttMonth(e.target.value)} className="h-9.5 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold" />
-            <TSelect value={attClass} onChange={(e) => setAttClass(e.target.value)} className="!w-auto min-w-44">
+          <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:items-center sm:w-auto sm:gap-2.5">
+            <input type="month" value={attMonth} onChange={(e) => setAttMonth(e.target.value)} className="h-9.5 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold w-full" />
+            <TSelect value={attClass} onChange={(e) => setAttClass(e.target.value)} className="!w-full sm:!w-auto sm:min-w-44">
               <option value="all">All classes</option>
               {classes.map((c) => <option key={c} value={c}>{c}</option>)}
             </TSelect>
-            <Btn variant="outline" icon="download" onClick={() => exportCSV(`attendance-${attMonth}`, [["Student", "Class", "Present", "Absent", "Leave", "Days", "Percent"], ...attRows.map((r) => [r.s.name, r.s.grade, r.p, r.a, r.l, r.total, r.pct ?? ""])])}>Export CSV</Btn>
+            <Btn variant="outline" icon="download" className="col-span-2 sm:col-span-1 w-full sm:w-auto" onClick={() => exportCSV(`attendance-${attMonth}`, [["Student", "Class", "Present", "Absent", "Leave", "Days", "Percent"], ...attRows.map((r) => [r.s.name, r.s.grade, r.p, r.a, r.l, r.total, r.pct ?? ""])])}>Export CSV</Btn>
           </div>
           <div className="card divide-y divide-ink-100">
             {attRows.length === 0 ? (

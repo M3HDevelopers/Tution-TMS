@@ -31,14 +31,13 @@ function Router() {
 }
 
 function Root() {
-  const { session, state } = useStore();
-  const [gateDone, setGateDone] = React.useState(false);
+  const { session, state, loadDemo } = useStore();
+  const [skip, setSkip] = React.useState(false);
   if (!session) {
-    if (state.students.length === 0 && !gateDone) {
-      return <FirstRunGate onSkip={() => setGateDone(true)} />;
-    }
-    return <Login />;
+    const firstRun = state.students.length === 0 && !state.activity.length && !skip;
+    return <Login onFirstRun={firstRun ? loadDemo : undefined} onSkip={firstRun ? () => setSkip(true) : undefined} />;
   }
+  void skip;
   return (
     <Shell>
       <Router />
@@ -46,18 +45,51 @@ function Root() {
   );
 }
 
-/** Brand-new install: choose demo data or start empty — before the login screen. */
-function FirstRunGate({ onSkip }: { onSkip: () => void }) {
-  const { loadDemo } = useStore();
-  return <Login onFirstRun={loadDemo} onSkip={onSkip} />;
+/** Catches any runtime error so the app never shows a dead white screen. */
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  resetData = () => {
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("tms_"))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch { /* ignore */ }
+    window.location.reload();
+  };
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="min-h-screen bg-ledger flex items-center justify-center px-5">
+        <div className="card max-w-md w-full p-7 text-center anim-pop">
+          <span className="inline-flex w-14 h-14 rounded-2xl bg-flame-50 text-flame-600 items-center justify-center mx-auto">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.5 2.8 19.5h18.4z" /><path d="M12 9.5v4.5M12 16.8v.01" /></svg>
+          </span>
+          <h1 className="font-display font-extrabold text-[22px] text-ink-900 mt-4">Kuch gadbad ho gayi</h1>
+          <p className="text-[13px] text-ink-500 mt-2 leading-relaxed">
+            App load hote waqt ek error aaya. Zyada tar yeh purane browser data ki wajah se hota hai. Pehle <b>Reload</b> try karein — agar phir bhi na chale to neeche wala button local data reset kar dega.
+          </p>
+          <p className="font-mono text-[10.5px] text-ink-300 mt-3 break-all">{String(this.state.error.message ?? this.state.error).slice(0, 160)}</p>
+          <div className="flex justify-center gap-2.5 mt-6">
+            <button onClick={() => window.location.reload()} className="h-10 px-5 rounded-[9px] bg-ink-900 text-white text-[13px] font-bold press">Reload App</button>
+            <button onClick={this.resetData} className="h-10 px-5 rounded-[9px] border border-flame-600/40 bg-flame-50 text-flame-700 text-[13px] font-bold press">Reset Local Data</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
 
 export default function App() {
   return (
-    <ToastProvider>
-      <StoreProvider>
-        <Root />
-      </StoreProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <StoreProvider>
+          <Root />
+        </StoreProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }

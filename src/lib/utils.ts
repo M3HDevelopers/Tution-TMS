@@ -21,6 +21,7 @@ export function todayISO(): string {
   return toISO(new Date());
 }
 export function parseISO(iso: string): Date {
+  if (typeof iso !== "string" || !iso.includes("-")) return new Date();
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
@@ -30,7 +31,8 @@ export function addDays(iso: string, n: number): string {
   return toISO(d);
 }
 export function daysBetween(a: string, b: string): number {
-  return Math.round((parseISO(b).getTime() - parseISO(a).getTime()) / 86400000);
+  const ms = parseISO(b).getTime() - parseISO(a).getTime();
+  return Number.isFinite(ms) ? Math.round(ms / 86400000) : 0;
 }
 export function weekdayIdx(iso: string): number {
   return parseISO(iso).getDay();
@@ -73,15 +75,16 @@ export function daysInPeriod(period: string): number {
 }
 
 export function fmtDate(iso: string | undefined, format: DateFormat = "dmy"): string {
-  if (!iso) return "—";
+  if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return "—";
   const d = parseISO(iso);
+  if (Number.isNaN(d.getTime())) return "—";
   if (format === "iso") return iso;
   if (format === "mdy") return `${MONTHS_S[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   return `${d.getDate()} ${MONTHS_S[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export function fmtMoney(n: number, currency = "Rs"): string {
-  const v = Math.round(n);
+  const v = Math.round(Number.isFinite(n) ? n : 0);
   const neg = v < 0;
   return `${neg ? "−" : ""}${currency} ${Math.abs(v).toLocaleString("en-US")}`;
 }
@@ -97,7 +100,7 @@ export function clampDay(period: string, day: number): string {
 }
 
 export function timeLabel(t: string): string {
-  if (!t) return "";
+  if (!t || typeof t !== "string" || !t.includes(":")) return "";
   const [h, m] = t.split(":").map(Number);
   const ap = h >= 12 ? "PM" : "AM";
   const hh = h % 12 === 0 ? 12 : h % 12;

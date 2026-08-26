@@ -243,7 +243,11 @@ export function Modal({ open, onClose, title, sub, children, footer, wide }: { o
           <IconBtn name="x" label="Close" onClick={onClose} />
         </div>
         <div className="px-6 py-5 overflow-y-auto scroll-thin overscroll-contain">{children}</div>
-        {footer && <div className="px-6 py-4 border-t border-ink-100 bg-ink-50/60 rounded-b-2xl flex items-center justify-end gap-2.5 flex-wrap shrink-0">{footer}</div>}
+        {footer && (
+          <div className="px-6 py-4 border-t border-ink-100 bg-ink-50/60 rounded-b-2xl flex flex-col gap-2.5 shrink-0 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -258,7 +262,7 @@ export function Confirm({ open, onClose, onConfirm, title, message, confirmLabel
         </span>
         <div className="text-[13.5px] text-ink-600 leading-relaxed">{message}</div>
       </div>
-      <div className="flex justify-end gap-2.5 mt-6">
+      <div className="flex flex-col gap-2.5 mt-6 [&>button]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>button]:w-auto">
         <Btn variant="outline" onClick={onClose}>Cancel</Btn>
         <Btn variant={tone === "danger" ? "danger" : tone === "gold" ? "gold" : "primary"} onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</Btn>
       </div>
@@ -351,7 +355,7 @@ export function PageHead({ title, sub, actions }: { title: string; sub?: React.R
         <h1 className="font-display font-bold text-[24px] sm:text-[27px] text-ink-900 leading-tight">{title}</h1>
         {sub && <p className="text-[13px] text-ink-400 mt-1">{sub}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2.5 flex-wrap">{actions}</div>}
+      {actions && <div className="flex flex-col w-full gap-2 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto sm:[&>*]:grow-0">{actions}</div>}
     </div>
   );
 }

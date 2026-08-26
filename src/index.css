@@ -115,6 +115,20 @@ body {
   background: transparent;
 }
 
+/* Mobile par scroll bar bilkul hide — touch scroll hota rahega, koi bar nahi dikhega */
+@media (max-width: 767px) {
+  *,
+  *::-webkit-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,

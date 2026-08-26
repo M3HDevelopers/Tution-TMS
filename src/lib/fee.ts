@@ -117,7 +117,9 @@ export function receiptNo(payments: Payment[]): string {
 
 /** Stable unique challan number per fee record (CHL-1001 …). */
 export function challanNo(records: FeeRecord[], recordId: string): string {
-  const sorted = [...records].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  const sorted = [...(records ?? [])].sort(
+    (a, b) => String(a?.createdAt ?? "").localeCompare(String(b?.createdAt ?? "")) || String(a?.id ?? "").localeCompare(String(b?.id ?? ""))
+  );
   const i = sorted.findIndex((r) => r.id === recordId);
   return `CHL-${1001 + (i >= 0 ? i : sorted.length)}`;
 }

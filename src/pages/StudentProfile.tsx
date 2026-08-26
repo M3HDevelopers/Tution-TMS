@@ -108,7 +108,7 @@ export default function StudentProfile() {
               Fee: <b className="text-gold-300 font-mono">{fmtMoney(student.monthlyFee, cur)}</b> · due on the <b className="text-gold-300">{student.feeDueDay === 1 ? "1st" : `${student.feeDueDay}th`}</b>{student.joiningDate ? ` · joined ${fmtDate(student.joiningDate, df)}` : " · joining date not recorded"}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col w-full gap-2 [&>*]:w-full sm:flex-row sm:items-center sm:[&>*]:w-auto">
             <Btn variant="gold" icon="wallet" onClick={() => ui.openPayment(student.id)}>Record Payment</Btn>
             <Btn variant="outline" className="!bg-ink-800 !text-white !border-ink-700" icon="slips" onClick={() => {
               if (outstanding <= 0) { toast.push("Fully paid — no challan needed for this student.", "warn"); return; }
