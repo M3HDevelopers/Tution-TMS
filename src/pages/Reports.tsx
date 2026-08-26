@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Avatar, Badge, Btn, EmptyState, Icon, PageHead, ProgressBar, Stat, Tabs, TSelect } from "../components/ui";
 import { agingBuckets, balanceOf, monthCollected, periodStats, studentOutstanding } from "../lib/fee";
 import { useStore } from "../lib/store";
-import { currentPeriod, daysBetween, downloadText, fmtDate, fmtMoney, lastNPeriods, monthKeyOf, naturalCompare, periodLabel, toCSV, todayISO } from "../lib/utils";
+import { currentPeriod, daysBetween, fmtDate, fmtMoney, lastNPeriods, monthKeyOf, naturalCompare, periodLabel, todayISO } from "../lib/utils";
 
 type Tab = "collection" | "dues" | "attendance" | "register" | "holidays";
 
@@ -52,11 +52,9 @@ export default function Reports() {
       .sort((x, y) => naturalCompare(x.s.grade, y.s.grade) || x.s.name.localeCompare(y.s.name));
   }, [state, attMonth, attClass]);
 
-  const exportCSV = (name: string, rows: (string | number)[][]) => downloadText(`${name}-${today}.csv`, toCSV(rows), "text/csv");
-
   return (
     <div>
-      <PageHead title="Reports" sub="Deterministic numbers straight from the local ledger — export anything as CSV" />
+      <PageHead title="Reports" sub="Deterministic numbers straight from the local ledger — full data export lives in Settings → Your Data" />
       <div className="mb-5"><Tabs value={tab} onChange={(k) => setTab(k as Tab)} tabs={[
         { key: "collection", label: "Fee Collection", icon: "wallet" },
         { key: "dues", label: "Outstanding Dues", icon: "alert" },
@@ -71,7 +69,6 @@ export default function Reports() {
             <TSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="!w-auto min-w-44">
               {lastNPeriods(12).map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
             </TSelect>
-            <Btn variant="outline" icon="download" onClick={() => exportCSV(`collection-${period}`, [["Receipt", "Student", "Date", "Method", "Reference", "Amount"], ...paymentsInPeriod.map((p) => [p.receiptNo, nameOf(p.studentId), p.date, p.method, p.reference ?? "", p.amount])])}>Export CSV</Btn>
           </div>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 stagger">
             <Stat label="Collected" value={fmtMoney(collected, cur)} sub={`${paymentsInPeriod.length} receipts`} icon="wallet" tone="gold" />
@@ -131,7 +128,6 @@ export default function Reports() {
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-4 pb-3">
               <h3 className="font-display font-bold text-[15px] text-ink-900">Outstanding by Student</h3>
-              <Btn size="sm" variant="outline" icon="download" onClick={() => exportCSV("outstanding-dues", [["Student", "Class", "Outstanding", "Oldest Due", "Days Overdue"], ...duesRows.map((r) => [r.s.name, r.s.grade, r.out, r.oldest, Math.max(0, r.days)])])}>Export CSV</Btn>
             </div>
             {duesRows.length === 0 ? (
               <EmptyState icon="check" title="No dues outstanding" message="Every active student is settled. Enjoy the moment." />
@@ -167,7 +163,6 @@ export default function Reports() {
               <option value="all">All classes</option>
               {classes.map((c) => <option key={c} value={c}>{c}</option>)}
             </TSelect>
-            <Btn variant="outline" icon="download" className="col-span-2 sm:col-span-1 w-full sm:w-auto" onClick={() => exportCSV(`attendance-${attMonth}`, [["Student", "Class", "Present", "Absent", "Leave", "Days", "Percent"], ...attRows.map((r) => [r.s.name, r.s.grade, r.p, r.a, r.l, r.total, r.pct ?? ""])])}>Export CSV</Btn>
           </div>
           <div className="card divide-y divide-ink-100">
             {attRows.length === 0 ? (
@@ -193,11 +188,9 @@ export default function Reports() {
 
       {tab === "register" && (
         <div className="card overflow-hidden anim-fade-up">
-          <div className="flex items-center justify-between px-5 pt-4 pb-3">
-            <h3 className="font-display font-bold text-[15px] text-ink-900">Student Register · {state.students.length} records</h3>
-            <Btn size="sm" variant="outline" icon="download" onClick={() => exportCSV("student-register", [["ID", "Name", "Level", "Class", "School", "Monthly Fee", "Fee Day", "Joining", "Status", "Guardians"], ...state.students.map((s) => [s.id, s.name, s.level, s.grade, s.school ?? "", s.monthlyFee, s.feeDueDay, s.joiningDate ?? "", s.status, state.guardians.filter((g) => g.studentId === s.id).map((g) => `${g.name} ${g.phone}`).join("; ")])])}>Export CSV</Btn>
-          </div>
-          <div className="divide-y divide-ink-100 max-h-[520px] overflow-y-auto scroll-thin">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3">
+              <h3 className="font-display font-bold text-[15px] text-ink-900">Student Register · {state.students.length} records</h3>
+            </div>          <div className="divide-y divide-ink-100 max-h-[520px] overflow-y-auto scroll-thin">
             {state.students.map((s) => (
               <div key={s.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gold-50/40 transition-colors">
                 <Avatar name={s.name} size={34} />

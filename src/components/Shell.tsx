@@ -439,9 +439,9 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
     <>
       {/* backdrop blocks every touch/click outside the panel */}
       <div className="fixed inset-0 z-40 bg-ink-950/50 anim-fade-in" style={{ touchAction: "none" }} onClick={onClose} />
-      {/* phone/tablet: dead-centred modal · lg+: anchored neatly under the bell */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:items-start lg:justify-end lg:p-0 lg:pt-[76px] lg:pr-6">
-        <div className="w-full max-w-[400px] max-h-[82vh] lg:max-h-[calc(100vh-100px)] card overflow-hidden anim-pop shadow-2xl flex flex-col">
+      {/* phone/tablet: bottom sheet (top always visible, list scrolls inside) · lg+: dropdown anchored under the bell */}
+      <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-start lg:justify-end lg:pt-[76px] lg:pr-6">
+        <div className="w-full max-w-full !rounded-t-2xl max-h-[85vh] lg:w-[400px] lg:max-w-[400px] lg:!rounded-2xl lg:max-h-[calc(100vh-100px)] card overflow-hidden anim-pop shadow-2xl flex flex-col">
           <div className="px-4 py-3 bg-ink-900 flex items-center justify-between gap-2 shrink-0">
             <span className="font-display font-bold text-[14.5px] text-white flex items-center gap-2">
               <Icon name="bell" size={15} className="text-gold-400" /> Notifications
