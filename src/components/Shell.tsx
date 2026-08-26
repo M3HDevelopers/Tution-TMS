@@ -413,25 +413,35 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
     toast.push("Timing notice removed");
   };
 
-  /* lock page scroll while the panel is open — only the panel list scrolls */
+  /* Hard lock: body becomes position:fixed (only reliable way on iOS Safari),
+     so NOTHING behind can scroll — only the list inside the panel scrolls. */
   useEffect(() => {
-    const prevHtml = document.documentElement.style.overflow;
-    const prevBody = document.body.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
+    const y = window.scrollY;
+    const b = document.body;
+    b.style.position = "fixed";
+    b.style.top = `-${y}px`;
+    b.style.left = "0";
+    b.style.right = "0";
+    b.style.overflow = "hidden";
+    b.style.touchAction = "none";
     return () => {
-      document.documentElement.style.overflow = prevHtml;
-      document.body.style.overflow = prevBody;
+      b.style.position = "";
+      b.style.top = "";
+      b.style.left = "";
+      b.style.right = "";
+      b.style.overflow = "";
+      b.style.touchAction = "";
+      window.scrollTo(0, y);
     };
   }, []);
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-ink-950/45 anim-fade-in" onClick={onClose} />
-      {/* mobile: proper centred modal · desktop: anchored under the bell.
-          Page scroll stays locked — only the list inside scrolls. */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:items-start sm:justify-end sm:pt-16 sm:pr-5 pointer-events-none">
-        <div className="pointer-events-auto w-full sm:w-[400px] max-h-[82vh] card overflow-hidden anim-pop shadow-2xl flex flex-col">
+      {/* backdrop blocks every touch/click outside the panel */}
+      <div className="fixed inset-0 z-40 bg-ink-950/50 anim-fade-in" style={{ touchAction: "none" }} onClick={onClose} />
+      {/* phone/tablet: dead-centred modal · lg+: anchored neatly under the bell */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:items-start lg:justify-end lg:p-0 lg:pt-[76px] lg:pr-6">
+        <div className="w-full max-w-[400px] max-h-[82vh] lg:max-h-[calc(100vh-100px)] card overflow-hidden anim-pop shadow-2xl flex flex-col">
           <div className="px-4 py-3 bg-ink-900 flex items-center justify-between gap-2 shrink-0">
             <span className="font-display font-bold text-[14.5px] text-white flex items-center gap-2">
               <Icon name="bell" size={15} className="text-gold-400" /> Notifications
@@ -509,9 +519,10 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
             );
           })}
         </div>
-        <div className="px-4 py-2.5 bg-ink-50/70 border-t border-ink-100 flex items-center justify-between">
+        <div className="px-4 py-2.5 bg-ink-50/70 border-t border-ink-100 flex items-center justify-between shrink-0">
           <span className="text-[11px] text-ink-400 font-semibold">Today · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
           <button onClick={() => { nav("attendance"); onClose(); }} className="text-[11.5px] font-bold text-ink-600 hover:text-ink-900">Mark attendance →</button>
+        </div>
         </div>
       </div>
       <TimingComposer open={composer} onClose={() => setComposer(false)} />

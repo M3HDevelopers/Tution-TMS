@@ -151,24 +151,16 @@ export function buildDemoData(): DataState {
     { id: uid("hol"), date: addDays(today, 5), scope: "class", className: "Matric", title: "Board paper — Class 10", reason: "Matric students have board examination." },
   ];
 
-  /* ---------- a sample timing-change notice ---------- */
-  const notifications: TimingNotice[] = [{
-    id: uid("ntf"),
-    title: "Tuition timing change (Ramzan schedule)",
-    startDate: daysAgo(1), days: 5, startTime: "15:00", endTime: "18:00",
-    note: "Classes will end earlier for the whole week.",
-    message: "",
-    createdAt: new Date().toISOString(),
-    sentTo: [],
-  }];
-  notifications[0].message = timingMessage(settings, notifications[0]);
+  /* No fake/sample notices — the bell only ever shows REAL, derived alerts:
+     overdue fees, dues arriving soon, absentees today, and timing changes the
+     tutor actually creates. */
+  const notifications: TimingNotice[] = [];
 
   /* ---------- activity ---------- */
   const activity: ActivityItem[] = [
     { id: uid("act"), at: new Date(Date.now() - 3600e3 * 5).toISOString(), text: `Payment RCP-${rno} recorded — ${fmtMoney(1500, settings.feePolicy.currency)} from Hassan Javed.`, kind: "fee" },
     { id: uid("act"), at: new Date(Date.now() - 3600e3 * 22).toISOString(), text: `Attendance marked for ${students.length} students.`, kind: "attendance" },
     { id: uid("act"), at: new Date(Date.now() - 3600e3 * 30).toISOString(), text: "Fee cycle generated for all active students.", kind: "fee" },
-    { id: uid("act"), at: new Date(Date.now() - 3600e3 * 40).toISOString(), text: "Timing change notice created for 5 days.", kind: "notice" },
   ];
 
   return {
