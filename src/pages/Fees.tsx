@@ -104,16 +104,28 @@ export default function Fees() {
               <EmptyState icon="fees" title="Nothing here" message="No students match this filter for the selected month." action={<Btn variant="outline" onClick={() => { setFilter("all"); setCls("all"); }}>Clear Filters</Btn>} />
             ) : (
               <div className="overflow-x-auto scroll-thin">
-                <table className="w-full text-left min-w-[920px]">
-                  <thead className="sticky top-0 bg-ink-50 z-10">
-                    <tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
-                      <th className="pl-4 py-3 font-bold">Student</th>
-                      <th className="py-3 font-bold text-right">Charge</th>
-                      <th className="py-3 font-bold text-right">Paid</th>
-                      <th className="py-3 font-bold">Balance</th>
-                      <th className="py-3 font-bold">Due date</th>
-                      <th className="py-3 font-bold">Status</th>
-                      <th className="py-3 pr-4 font-bold text-right">Actions</th>
+                {/* Fixed column architecture — Paid and Due each get their own dedicated track */}
+                <table className="w-full table-fixed border-collapse text-left align-middle min-w-[1140px]">
+                  <colgroup>
+                    <col />                        {/* student (flex) */}
+                    <col className="w-[130px]" />  {/* class */}
+                    <col className="w-[120px]" />  {/* charge */}
+                    <col className="w-[120px]" />  {/* paid amount */}
+                    <col className="w-[120px]" />  {/* due amount */}
+                    <col className="w-[132px]" />  {/* due date */}
+                    <col className="w-[126px]" />  {/* status */}
+                    <col className="w-[150px]" />  {/* actions */}
+                  </colgroup>
+                  <thead className="bg-ink-50">
+                    <tr className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-400 border-b border-ink-100">
+                      <th className="pl-4 pr-3 py-3">Student</th>
+                      <th className="px-3 py-3">Class</th>
+                      <th className="px-3 py-3 text-right">Charge</th>
+                      <th className="px-3 py-3 text-right">Paid Amount</th>
+                      <th className="px-3 py-3 text-right">Due Amount</th>
+                      <th className="px-3 py-3">Due Date</th>
+                      <th className="px-3 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink-100">
@@ -123,27 +135,26 @@ export default function Fees() {
                       return (
                         <React.Fragment key={s.id}>
                           <tr className={`transition-colors ${isOpen ? "bg-gold-50/60" : "hover:bg-gold-50/40"}`}>
-                            <td className="pl-4 py-2.5">
-                              <button onClick={() => setExpanded(isOpen ? null : s.id)} className="flex items-center gap-3 text-left">
-                                <Avatar name={s.name} size={34} />
-                                <span>
-                                  <span className="block text-[13.5px] font-bold text-ink-900">{s.name}</span>
-                                  <span className="block text-[11px] text-ink-400">{s.grade} · fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</span>
+                            <td className="pl-4 pr-3 py-3 min-w-0">
+                              <button onClick={() => setExpanded(isOpen ? null : s.id)} className="flex items-center gap-3 text-left w-full min-w-0 group">
+                                <Avatar name={s.name} size={38} />
+                                <span className="min-w-0">
+                                  <span className="block text-[15px] font-bold leading-snug text-ink-900 truncate group-hover:text-gold-700 transition-colors">{s.name}</span>
+                                  <span className="block text-[12px] text-ink-400 truncate mt-0.5">fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</span>
                                 </span>
-                                <Icon name="chevD" size={13} className={`text-ink-300 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                                <Icon name="chevD" size={13} className={`shrink-0 text-ink-300 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                               </button>
                             </td>
-                            <td className="py-2.5 text-right font-mono text-[12.5px] font-semibold text-ink-900 tnum">{rec ? fmtMoney(chargeOf(rec), cur) : "—"}</td>
-                            <td className="py-2.5 text-right font-mono text-[12.5px] font-semibold text-mint-600 tnum">{rec ? fmtMoney(paidOf(state.payments, rec.id), cur) : "—"}</td>
-                            <td className="py-2.5">
-                              <div className="flex flex-col gap-0.5">
-                                <span className={`font-mono text-[13px] font-bold tnum ${bal > 0 ? "text-flame-600" : "text-mint-600"}`}>{rec ? fmtMoney(bal, cur) : "—"}</span>
-                              </div>
+                            <td className="px-3 py-3"><Badge tone="teal" className="max-w-full truncate">{s.grade}</Badge></td>
+                            <td className="px-3 py-3 text-right font-mono text-[13.5px] font-semibold text-ink-900 tnum whitespace-nowrap">{rec ? fmtMoney(chargeOf(rec), cur) : "—"}</td>
+                            <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold text-mint-600 tnum whitespace-nowrap">{rec ? fmtMoney(paidOf(state.payments, rec.id), cur) : "—"}</td>
+                            <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold tnum whitespace-nowrap">
+                              {rec ? (bal > 0 ? <span className="text-flame-600">{fmtMoney(bal, cur)}</span> : <span className="text-mint-600">{fmtMoney(0, cur)}</span>) : "—"}
                             </td>
-                            <td className="py-2.5"><span className="text-[12px] font-semibold text-ink-600 tnum">{rec ? fmtDate(rec.dueDate, df) : "—"}</span></td>
-                            <td className="py-2.5">{st === "none" ? <Badge tone="slate">No challan</Badge> : <FeeStatusBadge status={st as FeeStatus} />}</td>
-                            <td className="py-2.5 pr-4">
-                              <div className="flex items-center justify-end gap-0.5">
+                            <td className="px-3 py-3 text-[12.5px] font-semibold text-ink-600 tnum whitespace-nowrap">{rec ? fmtDate(rec.dueDate, df) : "—"}</td>
+                            <td className="px-3 py-3">{st === "none" ? <Badge tone="slate">No challan</Badge> : <FeeStatusBadge status={st as FeeStatus} />}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-1">
                                 <IconBtn name="wallet" label="Record payment" onClick={() => ui.openPayment(s.id)} />
                                 <IconBtn name="slips" label={bal > 0 ? "Send monthly challan" : "Fully paid — no challan"} onClick={() => {
                                   if (!rec) { toast.push("No challan generated for this month yet.", "warn"); return; }
@@ -156,7 +167,7 @@ export default function Fees() {
                           </tr>
                           {isOpen && (
                             <tr>
-                              <td colSpan={7} className="bg-ink-50/70 px-6 py-4">
+                              <td colSpan={8} className="bg-ink-50/70 px-6 py-4">
                                 <div className="grid md:grid-cols-2 gap-5 anim-fade-in">
                                   <div>
                                     <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Challan · {rec ? challanNo(state.feeRecords, rec.id) : "—"}</h3>
@@ -222,10 +233,25 @@ export default function Fees() {
             <EmptyState icon="receipt" title="No receipts this month" message="Every payment creates a small receipt you can WhatsApp instantly." action={<Btn variant="gold" icon="plus" onClick={() => ui.openPayment()}>Record Payment</Btn>} />
           ) : (
             <div className="overflow-x-auto scroll-thin">
-              <table className="w-full text-left min-w-[760px]">
-                <thead className="sticky top-0 bg-ink-50 z-10">
-                  <tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
-                    <th className="pl-4 py-3 font-bold">Receipt</th><th className="py-3 font-bold">Student</th><th className="py-3 font-bold">Date</th><th className="py-3 font-bold">Method</th><th className="py-3 font-bold text-right">Amount</th><th className="py-3 font-bold">For Month</th><th className="py-3 pr-4 font-bold text-right">Send</th>
+              <table className="w-full table-fixed border-collapse text-left align-middle min-w-[820px]">
+                <colgroup>
+                  <col className="w-[110px]" />  {/* receipt no */}
+                  <col />                        {/* student (flex) */}
+                  <col className="w-[124px]" />  {/* date */}
+                  <col className="w-[170px]" />  {/* method */}
+                  <col className="w-[120px]" />  {/* amount */}
+                  <col className="w-[110px]" />  {/* for month */}
+                  <col className="w-[104px]" />  {/* send */}
+                </colgroup>
+                <thead className="bg-ink-50">
+                  <tr className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-400 border-b border-ink-100">
+                    <th className="pl-4 pr-3 py-3">Receipt</th>
+                    <th className="px-3 py-3">Student</th>
+                    <th className="px-3 py-3">Date</th>
+                    <th className="px-3 py-3">Method</th>
+                    <th className="px-3 py-3 text-right">Amount</th>
+                    <th className="px-3 py-3">For Month</th>
+                    <th className="px-4 py-3 text-right">Send</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-100">
@@ -233,13 +259,13 @@ export default function Fees() {
                     const rec = state.feeRecords.find((r) => r.id === p.feeRecordId);
                     return (
                       <tr key={p.id} className="hover:bg-gold-50/40 transition-colors">
-                        <td className="pl-4 py-2.5"><button onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} className="font-mono text-[12.5px] font-bold text-ink-900 hover:text-mint-700 tnum">{p.receiptNo}</button></td>
-                        <td className="py-2.5 text-[13px] font-semibold text-ink-900">{nameOf(p.studentId)}</td>
-                        <td className="py-2.5 text-[12px] text-ink-500 tnum">{fmtDate(p.date, df)}</td>
-                        <td className="py-2.5 text-[12px] text-ink-500">{p.method}{p.reference ? ` · ${p.reference}` : ""}</td>
-                        <td className="py-2.5 text-right font-mono text-[13px] font-bold text-mint-600 tnum">{fmtMoney(p.amount, cur)}</td>
-                        <td className="py-2.5 text-[12px] text-ink-500">{rec ? periodLabel(rec.period, true) : "—"}</td>
-                        <td className="py-2.5 pr-4 text-right">
+                        <td className="pl-4 pr-3 py-3"><button onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} className="font-mono text-[12.5px] font-bold text-ink-900 hover:text-mint-700 tnum whitespace-nowrap">{p.receiptNo}</button></td>
+                        <td className="px-3 py-3 text-[14px] font-bold text-ink-900 truncate">{nameOf(p.studentId)}</td>
+                        <td className="px-3 py-3 text-[12.5px] font-semibold text-ink-600 tnum whitespace-nowrap">{fmtDate(p.date, df)}</td>
+                        <td className="px-3 py-3 text-[12.5px] text-ink-500 truncate">{p.method}{p.reference ? ` · ${p.reference}` : ""}</td>
+                        <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold text-mint-600 tnum whitespace-nowrap">{fmtMoney(p.amount, cur)}</td>
+                        <td className="px-3 py-3 text-[12.5px] text-ink-500 whitespace-nowrap">{rec ? periodLabel(rec.period, true) : "—"}</td>
+                        <td className="px-4 py-3 text-right">
                           <Btn size="sm" variant="wa" icon="whatsapp" onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })}>Send</Btn>
                         </td>
                       </tr>

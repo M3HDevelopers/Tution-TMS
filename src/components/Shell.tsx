@@ -143,37 +143,61 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </aside>
 
-          {/* ---------- header ---------- */}
-          <header className="sticky top-0 z-40 bg-paper/90 backdrop-blur border-b border-ink-100">
+          {/* ---------- header : [ Brand ] —— [ Search ] [ Bell | Profile ] ---------- */}
+          <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-ink-100 shadow-[0_1px_3px_rgba(14,24,48,0.05)]">
             <div className="lg:pl-[236px]">
-              <div className="max-w-[1200px] mx-auto px-4 sm:px-7 h-15 flex items-center gap-3" style={{ height: 60 }}>
-                <button className="lg:hidden w-9 h-9 rounded-[9px] border border-ink-200 bg-white flex items-center justify-center text-ink-700" onClick={() => setSheetOpen(true)} aria-label="Open menu">
+              <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6" style={{ height: 60 }}>
+                {/* menu (mobile only) */}
+                <button className="lg:hidden w-9 h-9 shrink-0 rounded-[9px] border border-ink-200 bg-white flex items-center justify-center text-ink-700 hover:border-ink-400 transition-colors" onClick={() => setSheetOpen(true)} aria-label="Open menu">
                   <Icon name="menu" size={18} />
                 </button>
-                <div className="lg:hidden flex items-center gap-2 min-w-0">
-                  <span className="w-7 h-7 rounded-[8px] bg-gold-500 text-ink-950 flex items-center justify-center shrink-0">
-                    <svg width="15" height="15" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M7 25V11L16 6l9 5v14" /><path d="M12 25v-7h8v7" /></svg>
+
+                {/* brand — left */}
+                <button onClick={() => nav("dashboard")} title="Go to dashboard" className="group flex items-center gap-2.5 min-w-0 shrink-0">
+                  <span className="w-9 h-9 rounded-[10px] bg-gold-500 text-ink-950 flex items-center justify-center shrink-0 group-hover:bg-gold-400 transition-colors shadow-[0_2px_8px_-2px_rgba(232,160,32,0.6)]">
+                    <svg width="19" height="19" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 25V11L16 6l9 5v14" /><path d="M12 25v-7h8v7" /></svg>
                   </span>
-                  <span className="font-display font-bold text-[15px] text-ink-900 truncate">{state.settings.tuitionName}</span>
-                </div>
-                <div className="flex-1" />
-                {/* global search (desktop) */}
-                <GlobalSearch className="hidden md:block w-[340px]" />
-                <button className="md:hidden w-9 h-9 rounded-[9px] border border-ink-200 bg-white flex items-center justify-center text-ink-600" onClick={() => setMobileSearch(!mobileSearch)} aria-label="Search">
-                  <Icon name="search" size={17} />
+                  <span className="min-w-0 text-left">
+                    <span className="block font-display font-bold text-[15px] leading-tight text-ink-900 truncate max-w-[130px] sm:max-w-[210px]">{state.settings.tuitionName}</span>
+                    <span className="hidden sm:block text-[8.5px] font-bold tracking-[0.24em] text-gold-600 mt-0.5">TUITION MANAGEMENT</span>
+                  </span>
                 </button>
-                {/* notifications bell */}
-                <div className="relative">
-                  <button onClick={() => setBellOpen(!bellOpen)} aria-label="Notifications"
-                    className={`relative w-9 h-9 rounded-[9px] border flex items-center justify-center transition-colors ${bellOpen ? "bg-ink-900 text-white border-ink-900" : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"}`}>
-                    <Icon name="bell" size={17} />
-                    {notices.length > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-flame-600 text-white text-[10px] font-bold flex items-center justify-center tnum anim-tick">{notices.length}</span>
-                    )}
-                  </button>
-                  {bellOpen && <NotificationsPanel notices={notices} onClose={() => setBellOpen(false)} />}
+
+                {/* global search — centered, capped so it never dominates */}
+                <div className="flex-1 flex justify-center min-w-0 px-1 sm:px-4">
+                  <GlobalSearch className="hidden md:block w-full max-w-[300px] lg:max-w-[430px]" />
                 </div>
-                <div className="hidden sm:block"><TutorAvatar size={34} photo={state.settings.tutorPhoto} /></div>
+
+                {/* actions — right */}
+                <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                  <button className="md:hidden w-9 h-9 rounded-[9px] border border-ink-200 bg-white flex items-center justify-center text-ink-600 hover:border-ink-400 transition-colors" onClick={() => setMobileSearch(!mobileSearch)} aria-label="Search">
+                    <Icon name="search" size={17} />
+                  </button>
+
+                  {/* notifications bell */}
+                  <div className="relative">
+                    <button onClick={() => setBellOpen(!bellOpen)} aria-label="Notifications"
+                      className={`relative w-9 h-9 rounded-[9px] border flex items-center justify-center transition-colors ${bellOpen ? "bg-ink-900 text-white border-ink-900" : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"}`}>
+                      <Icon name="bell" size={17} />
+                      {notices.length > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-flame-600 text-white text-[10px] font-bold flex items-center justify-center tnum anim-tick">{notices.length}</span>
+                      )}
+                    </button>
+                    {bellOpen && <NotificationsPanel notices={notices} onClose={() => setBellOpen(false)} />}
+                  </div>
+
+                  <span className="hidden sm:block w-px h-6 bg-ink-150" aria-hidden="true" />
+
+                  {/* profile */}
+                  <button onClick={() => nav("settings")} title="Profile & settings" className="group flex items-center gap-2.5 rounded-[10px] pl-1 pr-1 sm:pr-2 py-1 hover:bg-ink-50 transition-colors">
+                    <TutorAvatar size={34} photo={state.settings.tutorPhoto} />
+                    <span className="hidden sm:block text-left">
+                      <span className="block text-[12.5px] font-bold leading-tight text-ink-900 max-w-[130px] truncate">{state.settings.tutorName}</span>
+                      <span className="block text-[10px] font-semibold text-ink-400">Owner · Tutor</span>
+                    </span>
+                    <Icon name="chevD" size={13} className="hidden sm:block text-ink-300 group-hover:text-ink-600 transition-colors" />
+                  </button>
+                </div>
               </div>
               {mobileSearch && (
                 <div className="md:hidden px-4 pb-3 anim-fade-in">
