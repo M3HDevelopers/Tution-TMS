@@ -154,15 +154,15 @@ export default function StudentProfile() {
             </div>
 
             {/* status + danger */}
-            <div className="card p-5 flex flex-wrap items-center gap-3">
-              <div className="flex-1">
-                <h3 className="font-display font-bold text-[14.5px] text-ink-900">Manage Record</h3>
-                <p className="text-[12px] text-ink-400 mt-0.5">Inactive students are skipped by monthly challan generation; their history stays intact.</p>
+            <div className="card p-5">
+              <h3 className="font-display font-bold text-[14.5px] text-ink-900">Manage Record</h3>
+              <p className="text-[12px] text-ink-400 mt-0.5">Inactive students are skipped by monthly challan generation; their history stays intact.</p>
+              <div className="grid grid-cols-2 gap-2.5 mt-4 sm:flex sm:items-center sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">
+                {student.status === "active"
+                  ? <Btn variant="outline" icon="minus" onClick={() => setAskInactive(true)}>Mark Inactive</Btn>
+                  : <Btn variant="success" icon="check" onClick={() => setStatus("active")}>Mark Active</Btn>}
+                <Btn variant="danger" icon="trash" onClick={() => setAskDelete(true)}>Delete Student</Btn>
               </div>
-              {student.status === "active"
-                ? <Btn variant="outline" icon="minus" onClick={() => setAskInactive(true)}>Mark Inactive</Btn>
-                : <Btn variant="success" icon="check" onClick={() => setStatus("active")}>Mark Active</Btn>}
-              <Btn variant="danger" icon="trash" onClick={() => setAskDelete(true)}>Delete Student</Btn>
             </div>
           </div>
 
@@ -184,9 +184,9 @@ export default function StudentProfile() {
                       {!g.whatsapp && <Badge tone="slate">No WhatsApp</Badge>}
                     </div>
                     {g.whatsapp && (
-                      <div className="flex gap-2 mt-2.5">
-                        <Btn size="sm" variant="wa" icon="whatsapp" onClick={() => window.open(waLink(g.phone, absentMessage(state, student)), "_blank", "noopener")}>Absent Msg</Btn>
-                        <Btn size="sm" variant="outline" icon="phone" onClick={() => window.open(`tel:${g.phone.replace(/[^0-9+]/g, "")}`, "_self")}>Call</Btn>
+                      <div className="grid grid-cols-2 gap-2 mt-2.5">
+                        <Btn size="sm" variant="wa" icon="whatsapp" className="w-full" onClick={() => window.open(waLink(g.phone, absentMessage(state, student)), "_blank", "noopener")}>Absent Msg</Btn>
+                        <Btn size="sm" variant="outline" icon="phone" className="w-full" onClick={() => window.open(`tel:${g.phone.replace(/[^0-9+]/g, "")}`, "_self")}>Call</Btn>
                       </div>
                     )}
                   </div>

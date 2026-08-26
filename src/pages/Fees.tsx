@@ -106,18 +106,21 @@ export default function Fees() {
 
       {tab === "board" && (
         <>
-          <div className="card p-3.5 mb-4 flex flex-wrap items-center gap-2.5 anim-fade-up">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mr-1"><Icon name="filter" size={13} className="inline mr-1" />Filter</span>
-            {["all", "overdue", "due", "partial", "paid", "waived"].map((f) => (
-              <button key={f} onClick={() => setFilter(f)} className={`h-8 px-3 rounded-[8px] text-[12px] font-bold transition-colors ${filter === f ? "bg-ink-900 text-white" : "bg-white border border-ink-200 text-ink-500 hover:border-ink-400"}`}>
-                {f === "all" ? "Everyone" : f === "due" ? "Due" : f === "partial" ? "Partially Paid" : f === "paid" ? "Paid" : f === "overdue" ? "Overdue" : "Waived"}
-              </button>
-            ))}
-            <div className="flex-1" />
-            <TSelect value={cls} onChange={(e) => setCls(e.target.value)} className="!w-full sm:!w-auto sm:min-w-36 grow sm:grow-0">
-              <option value="all">All classes</option>
-              {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-            </TSelect>
+          <div className="card p-3.5 mb-4 anim-fade-up">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-ink-400"><Icon name="filter" size={13} className="inline mr-1" />Filter</span>
+              <TSelect value={cls} onChange={(e) => setCls(e.target.value)} className="!w-40 sm:!w-auto sm:min-w-36 !h-8 text-[12px]">
+                <option value="all">All classes</option>
+                {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+              </TSelect>
+            </div>
+            <div className="grid grid-cols-3 gap-2 w-full sm:grid-cols-6">
+              {["all", "overdue", "due", "partial", "paid", "waived"].map((f) => (
+                <button key={f} onClick={() => setFilter(f)} className={`h-9 px-2 rounded-[9px] text-[11.5px] sm:text-[12px] font-bold transition-all press whitespace-nowrap ${filter === f ? "bg-ink-900 text-white shadow" : "bg-white border border-ink-200 text-ink-500 hover:border-ink-400"}`}>
+                  {f === "all" ? "Everyone" : f === "due" ? "Due" : f === "partial" ? "Partial" : f === "paid" ? "Paid" : f === "overdue" ? "Overdue" : "Waived"}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-3 stagger">
