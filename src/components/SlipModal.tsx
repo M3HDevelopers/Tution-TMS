@@ -43,9 +43,13 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetKey]);
 
-  const studentId = target?.kind === "challan"
-    ? (state.feeRecords ?? []).find((r) => r.id === (target as { recordId?: string }).recordId)?.studentId
-    : (state.payments ?? []).find((p) => p.id === (target as { recordId?: string; paymentId?: string }).paymentId)?.studentId;
+  // IMPORTANT: SlipModal is always mounted (target starts as null) — every
+  // access below must treat a null target as "nothing open yet".
+  const studentId = !target
+    ? undefined
+    : target.kind === "challan"
+      ? (state.feeRecords ?? []).find((r) => r.id === target.recordId)?.studentId
+      : (state.payments ?? []).find((p) => p.id === target.paymentId)?.studentId;
 
   const guardians = useMemo(
     () => (studentId ? state.guardians.filter((g) => g.studentId === studentId).sort((a, b) => Number(b.primary) - Number(a.primary)) : []),
