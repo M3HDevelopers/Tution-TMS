@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useNav, useUi } from "../components/Shell";
 import { Avatar, Btn, EmptyState, FeeStatusBadge, Icon, ProgressBar, Stat, useToast } from "../components/ui";
-import { balanceOf, dueSoonList, overdueStudents, periodStats, statusOf, studentOutstanding } from "../lib/fee";
+import { balanceOf, collectionByPeriod, dueSoonList, overdueStudents, periodStats, statusOf, studentOutstanding } from "../lib/fee";
 import { useStore } from "../lib/store";
 import { currentPeriod, fmtDate, fmtMoney, monthKeyOf, naturalCompare, periodLabel, timeLabel, todayISO, weekdayIdx } from "../lib/utils";
 
@@ -42,6 +42,22 @@ export default function Dashboard() {
 
   const totalExpected = active.reduce((s, x) => s + x.monthlyFee, 0);
 
+  /* lifetime earnings — keeps accumulating month after month */
+  const allTimeCollected = useMemo(
+    () => state.payments.filter((p) => p.state !== "voided").reduce((s, p) => s + p.amount, 0),
+    [state.payments]
+  );
+  const allTimeOutstanding = useMemo(
+    () => state.feeRecords.reduce((s, r) => s + balanceOf(r, state.payments), 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.feeRecords, state.payments]
+  );
+  const trend = useMemo(() => collectionByPeriod(state, 6), [state]);
+  const trendMax = Math.max(1, ...trend.map((t) => t.amount));
+  const thisMonthAmt = trend[trend.length - 1]?.amount ?? 0;
+  const lastMonthAmt = trend[trend.length - 2]?.amount ?? 0;
+  const trendUp = thisMonthAmt >= lastMonthAmt;
+
   return (
     <div>
       {/* greeting strip */}
@@ -65,9 +81,9 @@ export default function Dashboard() {
           <div className="flex-1">
             <div className="flex justify-between text-[12px] font-semibold mb-1.5">
               <span className="text-ink-500">{periodLabel(period)} collection</span>
-              <span className="text-ink-900 tnum font-mono">{fmtMoney(stats.collected, cur)} <span className="text-ink-400">/ {fmtMoney(totalExpected + stats.outstanding - stats.collected > totalExpected ? totalExpected : totalExpected, cur)}</span></span>
+              <span className="text-ink-900 tnum font-mono">{fmtMoney(stats.collected, cur)} <span className="text-ink-400">/ {fmtMoney(Math.max(totalExpected, stats.charged), cur)}</span></span>
             </div>
-            <ProgressBar value={stats.collected} max={Math.max(1, totalExpected)} tone={stats.collected >= totalExpected ? "green" : "gold"} />
+            <ProgressBar value={stats.collected} max={Math.max(1, Math.max(totalExpected, stats.charged))} tone={stats.collected >= totalExpected ? "green" : "gold"} />
           </div>
           <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${stats.outstanding > 0 ? "text-warn-700 bg-warn-50 border-warn-600/25" : "text-mint-700 bg-mint-50 border-mint-600/25"}`}>
             {stats.outstanding > 0 ? `${fmtMoney(stats.outstanding, cur)} pending` : "All collected"}
@@ -147,6 +163,48 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-5">
+          {/* earnings ledger — lifetime income that keeps growing month after month */}
+          <div className="card overflow-hidden anim-fade-up" style={{ animationDelay: "70ms" }}>
+            <div className="bg-ink-900 px-5 py-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.18em] text-gold-400"><Icon name="wallet" size={14} /> EARNINGS LEDGER</span>
+                <span className={`inline-flex items-center gap-1 text-[10.5px] font-bold rounded-md px-2 py-0.5 ${trendUp ? "bg-mint-600/20 text-mint-300" : "bg-flame-600/20 text-flame-300"}`}>
+                  <Icon name={trendUp ? "arrowR" : "chevD"} size={11} strokeWidth={2.4} className={trendUp ? "-rotate-45" : "rotate-45"} /> vs last month
+                </span>
+              </div>
+              <p className="font-display font-extrabold text-[30px] leading-tight text-white tnum mt-2">{fmtMoney(allTimeCollected, cur)}</p>
+              <p className="text-[11.5px] text-ink-400 mt-0.5">Collected in total — all months, all time</p>
+            </div>
+            <div className="px-5 pt-4">
+              <div className="flex items-end justify-between gap-1.5 h-[86px]">
+                {trend.map((t, i) => {
+                  const h = Math.max(6, Math.round((t.amount / trendMax) * 100));
+                  const isNow = t.period === period;
+                  return (
+                    <div key={t.period} className="flex-1 flex flex-col items-center gap-1.5 group" title={`${t.label}: ${fmtMoney(t.amount, cur)}`}>
+                      <span className="font-mono text-[9px] font-bold text-ink-400 tnum opacity-0 group-hover:opacity-100 transition-opacity">{t.amount > 0 ? `${Math.round(t.amount / 100) / 10}k` : ""}</span>
+                      <div
+                        className={`w-full rounded-t-[5px] anim-grow-y ${isNow ? "bg-gold-500" : "bg-ink-200 group-hover:bg-ink-400"} transition-colors`}
+                        style={{ height: `${h}%`, animationDelay: `${i * 70}ms` }}
+                      />
+                      <span className={`text-[9.5px] font-bold tracking-wide ${isNow ? "text-gold-700" : "text-ink-400"}`}>{t.label.slice(0, 3)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="px-5 py-3.5 mt-3 border-t border-ink-100 bg-ink-50/50 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-400">Still outstanding</p>
+                <p className={`font-mono text-[14px] font-bold tnum ${allTimeOutstanding > 0 ? "text-flame-600" : "text-mint-600"}`}>{fmtMoney(allTimeOutstanding, cur)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-400">This month</p>
+                <p className="font-mono text-[14px] font-bold text-ink-900 tnum">{fmtMoney(thisMonthAmt, cur)}</p>
+              </div>
+            </div>
+          </div>
+
           {/* today's classes */}
           <div className="card p-5 anim-fade-up" style={{ animationDelay: "90ms" }}>
             <div className="flex items-center justify-between mb-3.5">

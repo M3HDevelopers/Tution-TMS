@@ -12,10 +12,43 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import { Shell, useNav } from "./components/Shell";
 import { ToastProvider } from "./components/ui";
-import { StoreProvider, useStore } from "./lib/store";
+import { StoreProvider, useStore, withActivity } from "./lib/store";
+import { ensureFeeRecords } from "./lib/fee";
 
 function Router() {
   const { route } = useNav();
+  const { state, patch } = useStore();
+
+  /*
+   * Fee-cycle auto-refresh: whenever the app is open and the calendar rolls into
+   * a new day/month, re-run the generator so fresh challans appear, late fees
+   * apply and every dashboard/fee/dues figure stays perfectly in sync.
+   */
+  React.useEffect(() => {
+    const run = () => {
+      const res = ensureFeeRecords(state);
+      if (res.added > 0 || res.late > 0) {
+        patch({
+          feeRecords: res.records,
+          activity: withActivity(
+            { ...state, feeRecords: res.records },
+            `Fee cycle refreshed — ${res.added} new challan(s) generated${res.late ? `, ${res.late} late fee(s) applied` : ""}.`,
+            "fee"
+          ),
+        });
+      }
+    };
+    run();
+    const t = window.setInterval(run, 60_000);
+    const onVisible = () => { if (document.visibilityState === "visible") run(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   switch (route.page) {
     case "students": return <Students />;
     case "student": return <StudentProfile />;
