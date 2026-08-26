@@ -439,9 +439,11 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
     <>
       {/* backdrop blocks every touch/click outside the panel */}
       <div className="fixed inset-0 z-40 bg-ink-950/50 anim-fade-in" style={{ touchAction: "none" }} onClick={onClose} />
-      {/* phone/tablet: dead-centred modal · lg+: anchored neatly under the bell */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:items-start lg:justify-end lg:p-0 lg:pt-[76px] lg:pr-6">
-        <div className="w-full max-w-[400px] max-h-[82vh] lg:max-h-[calc(100vh-100px)] card overflow-hidden anim-pop shadow-2xl flex flex-col">
+      {/* Explicit fixed anchoring — no flex centring, so the panel can NEVER escape the viewport:
+          phone/tablet → glued bottom sheet · desktop → pinned just under the header, right side */}
+      <div
+        className="fixed z-50 inset-x-0 bottom-0 max-h-[82vh] !rounded-t-2xl !rounded-b-none lg:inset-x-auto lg:bottom-auto lg:top-[74px] lg:right-6 lg:w-[400px] lg:max-h-[calc(100vh-98px)] lg:!rounded-2xl card !rounded-none overflow-hidden anim-pop shadow-2xl flex flex-col pb-[env(safe-area-inset-bottom)]"
+      >
           <div className="px-4 py-3 bg-ink-900 flex items-center justify-between gap-2 shrink-0">
             <span className="font-display font-bold text-[14.5px] text-white flex items-center gap-2">
               <Icon name="bell" size={15} className="text-gold-400" /> Notifications
@@ -537,7 +539,6 @@ function NotificationsPanel({ notices, onClose }: { notices: ReturnType<typeof d
         <div className="px-4 py-2.5 bg-ink-50/70 border-t border-ink-100 flex items-center justify-between shrink-0">
           <span className="text-[11px] text-ink-400 font-semibold">Today · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
           <button onClick={() => { nav("attendance"); onClose(); }} className="text-[11.5px] font-bold text-ink-600 hover:text-ink-900">Mark attendance →</button>
-        </div>
         </div>
       </div>
       <TimingComposer open={composer} onClose={() => setComposer(false)} />

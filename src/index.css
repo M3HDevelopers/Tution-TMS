@@ -170,6 +170,10 @@ a:focus-visible {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+@keyframes grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
@@ -187,6 +191,7 @@ a:focus-visible {
 .anim-toast { animation: toast-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .anim-shake { animation: shake-x 0.4s ease both; }
 .anim-grow-x { animation: grow-x 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: left; }
+.anim-grow-y { animation: grow-y 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: bottom; }
 .anim-tick { animation: tick 0.3s ease both; }
 .pulse-dot { animation: pulse-soft 1.6s ease-in-out infinite; }
 

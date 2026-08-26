@@ -58,31 +58,10 @@ export default function Students() {
     return enriched;
   }, [state, q, cls, status, feeFilter, sort, period, grace]);
 
-  const exportCSV = () => {
-    const head = ["ID", "Name", "Class", "Level", "School", "Guardian", "Phone", "Monthly Fee", "Fee Due Day", "Paid (month)", "Due (month)", "Due Date", "Joining", "Status", "Guardians"];
-    const body = rows.map(({ s, rec, paid, due }) => {
-      const g0 = state.guardians.find((g) => g.studentId === s.id && g.primary) ?? state.guardians.find((g) => g.studentId === s.id);
-      return [
-        s.id, s.name, s.grade, s.level, s.school ?? "", g0?.name ?? "", g0?.phone ?? "", s.monthlyFee, s.feeDueDay,
-        paid, due, rec?.dueDate ?? "", s.joiningDate ?? "", s.status,
-        state.guardians.filter((g) => g.studentId === s.id).map((g) => `${g.name} ${g.phone}`).join("; "),
-      ];
-    });
-    const csv = [head, ...body].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "students.csv";
-    a.click();
-    toast.push("Student list exported as CSV");
-  };
-
   return (
     <div>
       <PageHead title="Students" sub={`${rows.length} record${rows.length === 1 ? "" : "s"} · same-class students are stacked automatically`}
-        actions={<>
-          <Btn variant="outline" icon="download" onClick={exportCSV}>Export</Btn>
-          <Btn variant="gold" icon="plus" onClick={() => ui.openStudentForm()}>Add Student</Btn>
-        </>} />
+        actions={<Btn variant="gold" icon="plus" onClick={() => ui.openStudentForm()}>Add Student</Btn>} />
 
       {/* toolbar */}
       <div className="card p-3.5 mb-4 flex flex-wrap items-center gap-2.5 anim-fade-up">
