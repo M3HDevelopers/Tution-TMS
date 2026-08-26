@@ -336,12 +336,13 @@ export function Stat({ label, value, sub, icon, tone = "navy", onClick, delay }:
 
 export function Tabs({ tabs, value, onChange }: { tabs: { key: string; label: string; icon?: string }[]; value: string; onChange: (k: string) => void }) {
   return (
-    <div className="inline-flex items-center gap-1 p-1 rounded-[10px] bg-ink-100/80 border border-ink-100 flex-wrap">
+    /* mobile: container full-width, har tab apni line ka barabar hissa leta hai */
+    <div className="flex flex-wrap items-center gap-1 p-1 rounded-[10px] bg-ink-100/80 border border-ink-100 w-full sm:w-auto">
       {tabs.map((t) => (
         <button key={t.key} onClick={() => onChange(t.key)}
-          className={`inline-flex items-center gap-1.5 h-8 px-3.5 rounded-[8px] text-[12.5px] font-semibold transition-all duration-150 ${value === t.key ? "bg-ink-900 text-white shadow" : "text-ink-500 hover:text-ink-900"}`}>
+          className={`inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-[8px] text-[12.5px] font-semibold transition-all duration-150 min-w-0 flex-1 basis-36 sm:flex-initial sm:basis-auto ${value === t.key ? "bg-ink-900 text-white shadow" : "text-ink-500 hover:text-ink-900"}`}>
           {t.icon && <Icon name={t.icon} size={14} />}
-          {t.label}
+          <span className="truncate">{t.label}</span>
         </button>
       ))}
     </div>

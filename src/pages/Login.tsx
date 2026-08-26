@@ -109,7 +109,7 @@ export default function Login({ onFirstRun, onSkip }: { onFirstRun?: () => void;
               </div>
               <div className="p-6">
                 <p className="text-[13px] text-ink-600 leading-relaxed">This fills the app with 12 students, guardians, four months of fees, receipts and attendance. Since the app is empty right now, nothing will be lost. You can wipe it later via Settings → Reset Demo Data.</p>
-                <div className="flex gap-2.5 mt-5">
+                <div className="grid grid-cols-2 gap-2.5 mt-5 [&>*]:min-w-0">
                   <Btn variant="outline" className="flex-1" onClick={() => setAskDemo(false)}>Back</Btn>
                   <Btn variant="gold" icon="check" className="flex-1" onClick={() => { onFirstRun?.(); }}>Yes, Load Demo</Btn>
                 </div>

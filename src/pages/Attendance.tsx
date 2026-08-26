@@ -254,9 +254,9 @@ export default function Attendance() {
       <section className="card p-5 mt-8 anim-fade-up">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="font-display font-bold text-[16.5px] text-ink-900">Monthly Summary</h2>
-          <div className="flex gap-2">
-            <input type="month" value={summaryMonth} onChange={(e) => setSummaryMonth(e.target.value)} className="h-9 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold" />
-            <TSelect value={summaryClass} onChange={(e) => setSummaryClass(e.target.value)} className="!w-auto min-w-40">
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex">
+            <input type="month" value={summaryMonth} onChange={(e) => setSummaryMonth(e.target.value)} className="h-9 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold w-full" />
+            <TSelect value={summaryClass} onChange={(e) => setSummaryClass(e.target.value)} className="!w-full sm:!w-auto sm:min-w-40">
               <option value="all">All classes</option>
               {classes.map((c) => <option key={c} value={c}>{c}</option>)}
             </TSelect>
