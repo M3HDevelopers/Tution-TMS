@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { Badge, Btn, EmptyState, Icon, PageHead, ProgressBar, Stat, Tabs, TSelect } from "../components/ui";
-import { agingBuckets, balanceOf, periodStats, studentOutstanding } from "../lib/fee";
+import { agingBuckets, balanceOf, monthCollected, periodStats, studentOutstanding } from "../lib/fee";
 import { useStore } from "../lib/store";
-import { currentPeriod, daysBetween, downloadText, fmtDate, fmtMoney, lastNPeriods, monthKeyOf, periodLabel, toCSV, todayISO } from "../lib/utils";
+import { currentPeriod, daysBetween, downloadText, fmtDate, fmtMoney, lastNPeriods, monthKeyOf, naturalCompare, periodLabel, toCSV, todayISO } from "../lib/utils";
 
 type Tab = "collection" | "dues" | "attendance" | "register" | "holidays";
 
@@ -10,15 +10,16 @@ export default function Reports() {
   const { state } = useStore();
   const df = state.settings.dateFormat;
   const cur = state.settings.feePolicy.currency;
-  const grace = state.settings.feePolicy.graceDays;
   const today = todayISO();
 
   const [tab, setTab] = useState<Tab>("collection");
   const [period, setPeriod] = useState(currentPeriod());
   const [attMonth, setAttMonth] = useState(monthKeyOf(today));
-  const [attBatch, setAttBatch] = useState("all");
+  const [attClass, setAttClass] = useState("all");
 
-  /* collection */
+  const nameOf = (id: string) => state.students.find((s) => s.id === id)?.name ?? "Removed student";
+  const classes = useMemo(() => Array.from(new Set(state.students.map((s) => s.grade))).sort(naturalCompare), [state.students]);
+
   const paymentsInPeriod = useMemo(
     () => state.payments.filter((p) => p.state !== "voided" && monthKeyOf(p.date) === period).sort((a, b) => b.date.localeCompare(a.date)),
     [state.payments, period]
@@ -26,41 +27,32 @@ export default function Reports() {
   const collected = paymentsInPeriod.reduce((s, p) => s + p.amount, 0);
   const byMethod = ["Cash", "Bank Transfer", "Mobile Wallet", "Other"].map((m) => ({ m, v: paymentsInPeriod.filter((p) => p.method === m).reduce((s, p) => s + p.amount, 0) }));
   const pStats = periodStats(state, period);
-  const nameOf = (id: string) => state.students.find((s) => s.id === id)?.name ?? "Unknown";
 
-  /* dues */
   const duesRows = useMemo(() => {
-    return state.students
-      .filter((s) => s.status === "active")
-      .map((s) => {
-        const out = studentOutstanding(state, s.id);
-        const recs = state.feeRecords.filter((r) => r.studentId === s.id && balanceOf(r, state.payments) > 0);
-        const oldest = recs.length ? recs.map((r) => r.dueDate).sort()[0] : "";
-        return { s, out, oldest, days: oldest ? daysBetween(oldest, today) : 0, count: recs.length };
-      })
-      .filter((r) => r.out > 0)
-      .sort((a, b) => b.days - a.days);
+    return state.students.filter((s) => s.status === "active").map((s) => {
+      const out = studentOutstanding(state, s.id);
+      const recs = state.feeRecords.filter((r) => r.studentId === s.id && balanceOf(r, state.payments) > 0);
+      const oldest = recs.length ? recs.map((r) => r.dueDate).sort()[0] : "";
+      return { s, out, oldest, days: oldest ? daysBetween(oldest, today) : 0 };
+    }).filter((r) => r.out > 0).sort((a, b) => b.days - a.days);
   }, [state, today]);
   const buckets = agingBuckets(state);
 
-  /* attendance */
   const attRows = useMemo(() => {
     return state.students
-      .filter((s) => s.status === "active" && (attBatch === "all" || s.batchIds.includes(attBatch)))
+      .filter((s) => s.status === "active" && (attClass === "all" || s.grade === attClass))
       .map((s) => {
-        const recs = state.attendance.filter((a) => a.studentId === s.id && monthKeyOf(a.date) === attMonth && (attBatch === "all" || a.batchId === attBatch));
+        const recs = state.attendance.filter((a) => a.studentId === s.id && monthKeyOf(a.date) === attMonth);
         const p = recs.filter((r) => r.status === "present" || r.status === "late").length;
         const a = recs.filter((r) => r.status === "absent").length;
         const l = recs.filter((r) => r.status === "leave").length;
         const pct = recs.length > 0 ? Math.round((p / recs.length) * 100) : null;
         return { s, p, a, l, total: recs.length, pct };
       })
-      .sort((x, y) => x.s.name.localeCompare(y.s.name));
-  }, [state, attMonth, attBatch]);
+      .sort((x, y) => naturalCompare(x.s.grade, y.s.grade) || x.s.name.localeCompare(y.s.name));
+  }, [state, attMonth, attClass]);
 
-  const exportCSV = (name: string, rows: (string | number)[][]) => {
-    downloadText(`${name}-${today}.csv`, toCSV(rows), "text/csv");
-  };
+  const exportCSV = (name: string, rows: (string | number)[][]) => downloadText(`${name}-${today}.csv`, toCSV(rows), "text/csv");
 
   return (
     <div>
@@ -73,7 +65,6 @@ export default function Reports() {
         { key: "holidays", label: "Holidays", icon: "calendar" },
       ]} /></div>
 
-      {/* ---------- collection ---------- */}
       {tab === "collection" && (
         <div className="space-y-5 anim-fade-up">
           <div className="flex flex-wrap items-center gap-3">
@@ -84,8 +75,8 @@ export default function Reports() {
           </div>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 stagger">
             <Stat label="Collected" value={fmtMoney(collected, cur)} sub={`${paymentsInPeriod.length} receipts`} icon="wallet" tone="gold" />
-            <Stat label="Charged" value={fmtMoney(pStats.charged, cur)} sub={periodLabel(period)} icon="fees" tone="navy" />
-            <Stat label="Outstanding (period)" value={fmtMoney(pStats.outstanding, cur)} sub={`${pStats.counts.overdue} overdue`} icon="alert" tone="red" />
+            <Stat label="Charged" value={fmtMoney(pStats.charged, cur)} sub={periodLabel(period)} icon="slips" tone="navy" />
+            <Stat label="Outstanding" value={fmtMoney(pStats.outstanding, cur)} sub={`${pStats.counts.overdue} overdue`} icon="alert" tone="red" />
             <Stat label="Settled Students" value={pStats.counts.paid + pStats.counts.waived} sub={`${pStats.counts.partial} partial`} icon="check" tone="green" />
           </div>
           <div className="grid lg:grid-cols-[1fr_1.7fr] gap-5">
@@ -99,9 +90,16 @@ export default function Reports() {
                   </div>
                 ))}
               </div>
+              <div className="mt-5 pt-4 border-t border-ink-100">
+                <h4 className="text-[11px] font-bold uppercase tracking-wide text-ink-400 mb-2.5">Earnings snapshot</h4>
+                <div className="space-y-1.5 text-[12.5px]">
+                  <div className="flex justify-between"><span className="text-ink-500 font-semibold">Collected (all time)</span><span className="font-mono font-bold text-mint-600 tnum">{fmtMoney(state.payments.filter((p) => p.state !== "voided").reduce((s, p) => s + p.amount, 0), cur)}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-500 font-semibold">Net outstanding</span><span className="font-mono font-bold text-flame-600 tnum">{fmtMoney(state.feeRecords.reduce((s, r) => s + balanceOf(r, state.payments), 0), cur)}</span></div>
+                </div>
+              </div>
             </div>
             <div className="card overflow-hidden">
-              <div className="overflow-x-auto scroll-thin max-h-[420px] overflow-y-auto">
+              <div className="overflow-x-auto scroll-thin max-h-[440px] overflow-y-auto">
                 <table className="w-full text-left min-w-[560px]">
                   <thead className="sticky top-0 bg-ink-50 z-10"><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
                     <th className="pl-4 py-2.5 font-bold">Receipt</th><th className="py-2.5 font-bold">Student</th><th className="py-2.5 font-bold">Date</th><th className="py-2.5 font-bold">Method</th><th className="py-2.5 pr-4 font-bold text-right">Amount</th>
@@ -125,10 +123,9 @@ export default function Reports() {
         </div>
       )}
 
-      {/* ---------- dues ---------- */}
       {tab === "dues" && (
         <div className="space-y-5 anim-fade-up">
-          <div className="grid grid-cols-3 gap-3.5 stagger">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 stagger">
             {buckets.map((b) => (
               <Stat key={b.label} label={b.label} value={fmtMoney(b.amount, cur)} sub={`${b.count} record${b.count === 1 ? "" : "s"}`} icon="clock" tone={b.label.startsWith("16") ? "red" : "gold"} />
             ))}
@@ -153,8 +150,8 @@ export default function Reports() {
                         <td className="py-2.5 text-[12px] text-ink-500">{r.s.grade}</td>
                         <td className="py-2.5 text-right font-mono font-bold text-[12.5px] text-flame-600 tnum">{fmtMoney(r.out, cur)}</td>
                         <td className="py-2.5 text-[12px] text-ink-500 tnum">{fmtDate(r.oldest, df)}</td>
-                        <td className="py-2.5 text-[12px] font-semibold tnum text-ink-700">{r.days > 0 ? `${r.days} days` : "not overdue"}</td>
-                        <td className="py-2.5 pr-5"><Badge tone={r.days > 15 ? "red" : r.days > 0 ? "amber" : "slate"}>{r.days > 15 ? "16+" : r.days > 7 ? "8–15" : r.days > 0 ? "1–7" : "Current"}</Badge></td>
+                        <td className="py-2.5 text-[12px] font-semibold text-ink-700 tnum">{r.days > 0 ? `${r.days} days` : "not overdue"}</td>
+                        <td className="py-2.5 pr-5"><Badge tone={r.days > 15 ? "red" : r.days > 7 ? "amber" : r.days > 0 ? "gold" : "slate"}>{r.days > 15 ? "16+" : r.days > 7 ? "8–15" : r.days > 0 ? "1–7" : "Current"}</Badge></td>
                       </tr>
                     ))}
                   </tbody>
@@ -165,14 +162,13 @@ export default function Reports() {
         </div>
       )}
 
-      {/* ---------- attendance ---------- */}
       {tab === "attendance" && (
         <div className="space-y-4 anim-fade-up">
           <div className="flex flex-wrap gap-3 items-center">
             <input type="month" value={attMonth} onChange={(e) => setAttMonth(e.target.value)} className="h-9.5 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold" />
-            <TSelect value={attBatch} onChange={(e) => setAttBatch(e.target.value)} className="!w-auto min-w-44">
-              <option value="all">All batches</option>
-              {state.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            <TSelect value={attClass} onChange={(e) => setAttClass(e.target.value)} className="!w-auto min-w-44">
+              <option value="all">All classes</option>
+              {classes.map((c) => <option key={c} value={c}>{c}</option>)}
             </TSelect>
             <Btn variant="outline" icon="download" onClick={() => exportCSV(`attendance-${attMonth}`, [["Student", "Class", "Present", "Absent", "Leave", "Days", "Percent"], ...attRows.map((r) => [r.s.name, r.s.grade, r.p, r.a, r.l, r.total, r.pct ?? ""])])}>Export CSV</Btn>
           </div>
@@ -204,28 +200,27 @@ export default function Reports() {
         </div>
       )}
 
-      {/* ---------- register ---------- */}
       {tab === "register" && (
         <div className="card overflow-hidden anim-fade-up">
           <div className="flex items-center justify-between px-5 pt-4 pb-3">
             <h3 className="font-display font-bold text-[15px] text-ink-900">Student Register · {state.students.length} records</h3>
-            <Btn size="sm" variant="outline" icon="download" onClick={() => exportCSV("student-register", [["ID", "Name", "Level", "Grade", "School", "Monthly Fee", "Joining", "Status", "Guardians"], ...state.students.map((s) => [s.id, s.name, s.level, s.grade, s.school ?? "", s.monthlyFee, s.joiningDate, s.status, state.guardians.filter((g) => g.studentId === s.id).map((g) => `${g.name} ${g.phone}`).join("; ")])])}>Export CSV</Btn>
+            <Btn size="sm" variant="outline" icon="download" onClick={() => exportCSV("student-register", [["ID", "Name", "Level", "Class", "School", "Monthly Fee", "Fee Day", "Joining", "Status", "Guardians"], ...state.students.map((s) => [s.id, s.name, s.level, s.grade, s.school ?? "", s.monthlyFee, s.feeDueDay, s.joiningDate ?? "", s.status, state.guardians.filter((g) => g.studentId === s.id).map((g) => `${g.name} ${g.phone}`).join("; ")])])}>Export CSV</Btn>
           </div>
           <div className="overflow-x-auto scroll-thin max-h-[520px] overflow-y-auto">
             <table className="w-full text-left min-w-[720px]">
               <thead className="sticky top-0 bg-ink-50 z-10"><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
-                <th className="pl-5 py-2.5 font-bold">Name</th><th className="py-2.5 font-bold">Level</th><th className="py-2.5 font-bold">Grade</th><th className="py-2.5 font-bold">School</th><th className="py-2.5 font-bold text-right">Fee</th><th className="py-2.5 font-bold">Joined</th><th className="py-2.5 pr-5 font-bold">Status</th>
+                <th className="pl-5 py-2.5 font-bold">Name</th><th className="py-2.5 font-bold">Class</th><th className="py-2.5 font-bold">Level</th><th className="py-2.5 font-bold text-right">Fee</th><th className="py-2.5 font-bold">Fee Day</th><th className="py-2.5 font-bold">Joined</th><th className="py-2.5 pr-5 font-bold">Status</th>
               </tr></thead>
               <tbody className="divide-y divide-ink-100">
                 {state.students.map((s) => (
                   <tr key={s.id} className="hover:bg-gold-50/40">
                     <td className="pl-5 py-2.5 text-[13px] font-semibold text-ink-900">{s.name}</td>
-                    <td className="py-2.5 text-[12px] text-ink-500">{s.level}</td>
                     <td className="py-2.5 text-[12px] text-ink-500">{s.grade}</td>
-                    <td className="py-2.5 text-[12px] text-ink-500">{s.school ?? "—"}</td>
+                    <td className="py-2.5 text-[12px] text-ink-500">{s.level}</td>
                     <td className="py-2.5 text-right font-mono text-[12px] font-semibold tnum">{fmtMoney(s.monthlyFee, cur)}</td>
-                    <td className="py-2.5 text-[12px] text-ink-500 tnum">{fmtDate(s.joiningDate, df)}</td>
-                    <td className="py-2.5 pr-5"><Badge tone={s.status === "active" ? "green" : s.status === "inactive" ? "amber" : "slate"}>{s.status}</Badge></td>
+                    <td className="py-2.5 text-[12px] text-ink-500 tnum">{s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</td>
+                    <td className="py-2.5 text-[12px] text-ink-500 tnum">{s.joiningDate ? fmtDate(s.joiningDate, df) : "—"}</td>
+                    <td className="py-2.5 pr-5"><Badge tone={s.status === "active" ? "green" : "amber"}>{s.status}</Badge></td>
                   </tr>
                 ))}
               </tbody>
@@ -234,7 +229,6 @@ export default function Reports() {
         </div>
       )}
 
-      {/* ---------- holidays ---------- */}
       {tab === "holidays" && (
         <div className="card p-5 anim-fade-up max-w-2xl">
           <h3 className="font-display font-bold text-[15px] text-ink-900 mb-3.5">Holiday Report</h3>
@@ -250,7 +244,7 @@ export default function Reports() {
                     <span className="text-[13px] font-semibold text-ink-900">{h.title}</span>
                     <span className="text-[11.5px] text-ink-400 ml-2 tnum">{fmtDate(h.date, df)}{h.reason ? ` · ${h.reason}` : ""}</span>
                   </div>
-                  <Badge tone={h.scope === "all" ? "teal" : "gold"}>{h.scope === "all" ? "Whole centre" : state.batches.find((b) => b.id === h.batchId)?.name ?? "Batch"}</Badge>
+                  <Badge tone={h.scope === "all" ? "teal" : "gold"}>{h.scope === "all" ? "Whole tuition" : h.className}</Badge>
                 </div>
               ))}
             </div>

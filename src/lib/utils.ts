@@ -1,4 +1,8 @@
-import type { DateFormat } from "../types";
+export type DateFormat = "dmy" | "mdy" | "iso";
+
+export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+export const WEEKDAYS_S = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const RELATIONS = ["Father", "Mother", "Guardian", "Brother", "Sister", "Uncle", "Aunt", "Other"];
 
 let seq = 0;
 export function uid(prefix: string): string {
@@ -13,39 +17,30 @@ export const pad2 = (n: number) => String(n).padStart(2, "0");
 export function toISO(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
-
 export function todayISO(): string {
   return toISO(new Date());
 }
-
 export function parseISO(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
-
 export function addDays(iso: string, n: number): string {
   const d = parseISO(iso);
   d.setDate(d.getDate() + n);
   return toISO(d);
 }
-
 export function daysBetween(a: string, b: string): number {
-  const ms = parseISO(b).getTime() - parseISO(a).getTime();
-  return Math.round(ms / 86400000);
+  return Math.round((parseISO(b).getTime() - parseISO(a).getTime()) / 86400000);
 }
-
 export function weekdayIdx(iso: string): number {
   return parseISO(iso).getDay();
 }
-
 export function monthKeyOf(iso: string): string {
   return iso.slice(0, 7);
 }
-
 export function currentPeriod(): string {
   return monthKeyOf(todayISO());
 }
-
 export function lastNPeriods(n: number): string[] {
   const out: string[] = [];
   const d = new Date();
@@ -55,7 +50,6 @@ export function lastNPeriods(n: number): string[] {
   }
   return out;
 }
-
 export function shiftPeriod(period: string, delta: number): string {
   const [y, m] = period.split("-").map(Number);
   const d = new Date(y, m - 1 + delta, 1);
@@ -67,15 +61,12 @@ const MONTHS_S = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
 
 export function periodLabel(period: string, short = false): string {
   const [y, m] = period.split("-").map(Number);
-  const arr = short ? MONTHS_S : MONTHS;
-  return `${arr[(m || 1) - 1]} ${y}`;
+  return `${(short ? MONTHS_S : MONTHS)[(m || 1) - 1]} ${y}`;
 }
-
 export function monthTitle(period: string): string {
   const [y, m] = period.split("-").map(Number);
   return `${MONTHS[(m || 1) - 1]} ${y}`;
 }
-
 export function daysInPeriod(period: string): number {
   const [y, m] = period.split("-").map(Number);
   return new Date(y, m, 0).getDate();
@@ -92,8 +83,7 @@ export function fmtDate(iso: string | undefined, format: DateFormat = "dmy"): st
 export function fmtMoney(n: number, currency = "Rs"): string {
   const v = Math.round(n);
   const neg = v < 0;
-  const abs = Math.abs(v).toLocaleString("en-US");
-  return `${neg ? "−" : ""}${currency} ${abs}`;
+  return `${neg ? "−" : ""}${currency} ${Math.abs(v).toLocaleString("en-US")}`;
 }
 
 export function num(v: unknown): number {
@@ -115,12 +105,7 @@ export function timeLabel(t: string): string {
 }
 
 export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
 }
 
 const AV_HUES = [158, 205, 28, 340, 96, 262, 190, 44];
@@ -128,6 +113,17 @@ export function nameHue(name: string): number {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return AV_HUES[h % AV_HUES.length];
+}
+
+/** Natural sort for class names: "Class 2" < "Class 10", letters first. */
+export function naturalCompare(a: string, b: string): number {
+  const an = a.match(/(\d+)\s*$/);
+  const bn = b.match(/(\d+)\s*$/);
+  const aBase = a.replace(/[\s\d]+$/, "").trim().toLowerCase();
+  const bBase = b.replace(/[\s\d]+$/, "").trim().toLowerCase();
+  if (aBase !== bBase) return aBase.localeCompare(bBase);
+  if (an && bn) return parseInt(an[1], 10) - parseInt(bn[1], 10);
+  return a.localeCompare(b);
 }
 
 export function fillTemplate(tpl: string, vars: Record<string, string>): string {
@@ -149,14 +145,10 @@ export function downloadText(filename: string, content: string, type = "text/pla
 
 export function toCSV(rows: (string | number)[][]): string {
   return rows
-    .map((r) =>
-      r
-        .map((c) => {
-          const s = String(c ?? "");
-          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        })
-        .join(",")
-    )
+    .map((r) => r.map((c) => {
+      const s = String(c ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    }).join(","))
     .join("\r\n");
 }
 
@@ -172,14 +164,21 @@ export function readFileText(file: File): Promise<string> {
 export function normalizePhone(p: string): string {
   return p.replace(/[^0-9+]/g, "");
 }
-
 export function isValidPhone(p: string): boolean {
   const n = normalizePhone(p);
   return n.length >= 7 && n.length <= 15;
 }
-
 export function waLink(phone: string, text: string): string {
   let n = normalizePhone(phone);
   if (n.startsWith("0")) n = "92" + n.slice(1);
   return `https://wa.me/${n.replace("+", "")}?text=${encodeURIComponent(text)}`;
+}
+
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const [meta, b64] = dataUrl.split(",");
+  const mime = /data:(.*?);/.exec(meta)?.[1] ?? "image/png";
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
 }
