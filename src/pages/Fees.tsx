@@ -99,130 +99,112 @@ export default function Fees() {
             </TSelect>
           </div>
 
-          <div className="card overflow-hidden anim-fade-up" style={{ animationDelay: "60ms" }}>
+          <div className="space-y-3 stagger">
             {rows.length === 0 ? (
-              <EmptyState icon="fees" title="Nothing here" message="No students match this filter for the selected month." action={<Btn variant="outline" onClick={() => { setFilter("all"); setCls("all"); }}>Clear Filters</Btn>} />
-            ) : (
-              <div className="overflow-x-auto scroll-thin">
-                {/* Fixed column architecture — Paid and Due each get their own dedicated track */}
-                <table className="w-full table-fixed border-collapse text-left align-middle min-w-[1140px]">
-                  <colgroup>
-                    <col />                        {/* student (flex) */}
-                    <col className="w-[130px]" />  {/* class */}
-                    <col className="w-[120px]" />  {/* charge */}
-                    <col className="w-[120px]" />  {/* paid amount */}
-                    <col className="w-[120px]" />  {/* due amount */}
-                    <col className="w-[132px]" />  {/* due date */}
-                    <col className="w-[126px]" />  {/* status */}
-                    <col className="w-[150px]" />  {/* actions */}
-                  </colgroup>
-                  <thead className="bg-ink-50">
-                    <tr className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-400 border-b border-ink-100">
-                      <th className="pl-4 pr-3 py-3">Student</th>
-                      <th className="px-3 py-3">Class</th>
-                      <th className="px-3 py-3 text-right">Charge</th>
-                      <th className="px-3 py-3 text-right">Paid Amount</th>
-                      <th className="px-3 py-3 text-right">Due Amount</th>
-                      <th className="px-3 py-3">Due Date</th>
-                      <th className="px-3 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ink-100">
-                    {rows.map(({ s, rec, bal, st }) => {
-                      const isOpen = expanded === s.id;
-                      const pays = rec ? state.payments.filter((p) => p.feeRecordId === rec.id).sort((a, b) => b.date.localeCompare(a.date)) : [];
-                      return (
-                        <React.Fragment key={s.id}>
-                          <tr className={`transition-colors ${isOpen ? "bg-gold-50/60" : "hover:bg-gold-50/40"}`}>
-                            <td className="pl-4 pr-3 py-3 min-w-0">
-                              <button onClick={() => setExpanded(isOpen ? null : s.id)} className="flex items-center gap-3 text-left w-full min-w-0 group">
-                                <Avatar name={s.name} size={38} />
-                                <span className="min-w-0">
-                                  <span className="block text-[15px] font-bold leading-snug text-ink-900 truncate group-hover:text-gold-700 transition-colors">{s.name}</span>
-                                  <span className="block text-[12px] text-ink-400 truncate mt-0.5">fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</span>
-                                </span>
-                                <Icon name="chevD" size={13} className={`shrink-0 text-ink-300 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-                              </button>
-                            </td>
-                            <td className="px-3 py-3"><Badge tone="teal" className="max-w-full truncate">{s.grade}</Badge></td>
-                            <td className="px-3 py-3 text-right font-mono text-[13.5px] font-semibold text-ink-900 tnum whitespace-nowrap">{rec ? fmtMoney(chargeOf(rec), cur) : "—"}</td>
-                            <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold text-mint-600 tnum whitespace-nowrap">{rec ? fmtMoney(paidOf(state.payments, rec.id), cur) : "—"}</td>
-                            <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold tnum whitespace-nowrap">
-                              {rec ? (bal > 0 ? <span className="text-flame-600">{fmtMoney(bal, cur)}</span> : <span className="text-mint-600">{fmtMoney(0, cur)}</span>) : "—"}
-                            </td>
-                            <td className="px-3 py-3 text-[12.5px] font-semibold text-ink-600 tnum whitespace-nowrap">{rec ? fmtDate(rec.dueDate, df) : "—"}</td>
-                            <td className="px-3 py-3">{st === "none" ? <Badge tone="slate">No challan</Badge> : <FeeStatusBadge status={st as FeeStatus} />}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center justify-end gap-1">
-                                <IconBtn name="wallet" label="Record payment" onClick={() => ui.openPayment(s.id)} />
-                                <IconBtn name="slips" label={bal > 0 ? "Send monthly challan" : "Fully paid — no challan"} onClick={() => {
-                                  if (!rec) { toast.push("No challan generated for this month yet.", "warn"); return; }
-                                  if (bal <= 0) { toast.push(`${s.name} is fully paid — challan not needed.`, "warn"); return; }
-                                  ui.openSlip({ kind: "challan", recordId: rec.id });
-                                }} />
-                                <IconBtn name="eye" label="Open profile" onClick={() => nav("student", { id: s.id })} />
-                              </div>
-                            </td>
-                          </tr>
-                          {isOpen && (
-                            <tr>
-                              <td colSpan={8} className="bg-ink-50/70 px-6 py-4">
-                                <div className="grid md:grid-cols-2 gap-5 anim-fade-in">
-                                  <div>
-                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Challan · {rec ? challanNo(state.feeRecords, rec.id) : "—"}</h3>
-                                    {rec ? (
-                                      <div className="rounded-[10px] border border-ink-150 bg-white divide-y divide-ink-100 text-[12.5px]">
-                                        <Row k="Monthly fee" v={fmtMoney(rec.baseFee, cur)} />
-                                        {rec.lateFee > 0 && <Row k="Late fee" v={fmtMoney(rec.lateFee, cur)} />}
-                                        {rec.adjustment !== 0 && <Row k="Adjustment" v={`${rec.adjustment > 0 ? "+" : "−"}${fmtMoney(Math.abs(rec.adjustment), cur)}`} />}
-                                        <Row k="Paid" v={`− ${fmtMoney(paidOf(state.payments, rec.id), cur)}`} green />
-                                        <Row k="Balance" v={fmtMoney(balanceOf(rec, state.payments), cur)} bold red={bal > 0} />
-                                        <Row k="Due date" v={fmtDate(rec.dueDate, df)} />
-                                      </div>
-                                    ) : <p className="text-[12.5px] text-ink-400">No fee record for {periodLabel(period)}.</p>}
-                                    <div className="flex gap-2 mt-3">
-                                      {rec && bal > 0 && <Btn size="sm" variant="gold" icon="send" onClick={() => ui.openSlip({ kind: "challan", recordId: rec.id })}>Send Challan</Btn>}
-                                      {rec && (
-                                        <Btn size="sm" variant="outline" icon={rec.waived ? "refresh" : "minus"} onClick={() => setWaiveRec(rec.id)}>{rec.waived ? "Remove Waiver" : "Waive Fee"}</Btn>
-                                      )}
-                                    </div>
+              <div className="card">
+                <EmptyState icon="fees" title="Nothing here" message="No students match this filter for the selected month." action={<Btn variant="outline" onClick={() => { setFilter("all"); setCls("all"); }}>Clear Filters</Btn>} />
+              </div>
+            ) : rows.map(({ s, rec, bal, st }) => {
+              const isOpen = expanded === s.id;
+              const pays = rec ? state.payments.filter((p) => p.feeRecordId === rec.id).sort((a, b) => b.date.localeCompare(a.date)) : [];
+              return (
+                <div key={s.id} className={`card overflow-hidden transition-colors ${isOpen ? "border-gold-500/40 shadow-[var(--shadow-lift)]" : ""}`}>
+                  {/* head — tap to expand */}
+                  <div onClick={() => setExpanded(isOpen ? null : s.id)} className="flex items-center gap-3 px-4 pt-3.5 pb-3 cursor-pointer">
+                    <Avatar name={s.name} size={42} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[15.5px] font-bold leading-tight text-ink-900 truncate">{s.name}</p>
+                      <p className="text-[11.5px] text-ink-400 mt-0.5"><Badge tone="teal" className="mr-1.5">{s.grade}</Badge> fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</p>
+                    </div>
+                    {st === "none" ? <Badge tone="slate">No challan</Badge> : <FeeStatusBadge status={st as FeeStatus} />}
+                    <Icon name="chevD" size={15} className={`text-ink-300 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                  </div>
+
+                  {/* amount strip */}
+                  <div className="mx-4 rounded-[10px] border border-ink-100 bg-ink-50/60 grid grid-cols-3 divide-x divide-ink-100">
+                    <div className="px-3 py-2.5">
+                      <span className="block text-[9.5px] font-bold uppercase tracking-[0.08em] text-ink-400">Charge</span>
+                      <span className="block font-mono text-[14px] font-bold text-ink-900 tnum mt-0.5 truncate">{rec ? fmtMoney(chargeOf(rec), cur) : "—"}</span>
+                    </div>
+                    <div className="px-3 py-2.5">
+                      <span className="block text-[9.5px] font-bold uppercase tracking-[0.08em] text-ink-400">Paid</span>
+                      <span className="block font-mono text-[14px] font-bold text-mint-600 tnum mt-0.5 truncate">{rec ? fmtMoney(paidOf(state.payments, rec.id), cur) : "—"}</span>
+                    </div>
+                    <div className="px-3 py-2.5">
+                      <span className="block text-[9.5px] font-bold uppercase tracking-[0.08em] text-ink-400">Due</span>
+                      <span className={`block font-mono text-[14px] font-bold tnum mt-0.5 truncate ${rec && bal > 0 ? "text-flame-600" : "text-mint-600"}`}>{rec ? fmtMoney(bal, cur) : "—"}</span>
+                    </div>
+                  </div>
+
+                  {/* due date + actions */}
+                  <div className="flex items-center gap-2 px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-500 tnum"><Icon name="clock" size={13} /> {rec ? `Due ${fmtDate(rec.dueDate, df)}` : "—"}</span>
+                    <span className="flex-1" />
+                    <Btn size="sm" variant="gold" icon="wallet" onClick={() => ui.openPayment(s.id)}>Pay</Btn>
+                    <Btn size="sm" variant={bal > 0 ? "wa" : "outline"} icon={bal > 0 ? "send" : "check"} onClick={() => {
+                      if (!rec) { toast.push("No challan generated for this month yet.", "warn"); return; }
+                      if (bal <= 0) { toast.push(`${s.name} is fully paid — challan not needed.`, "warn"); return; }
+                      ui.openSlip({ kind: "challan", recordId: rec.id });
+                    }}>{bal > 0 ? "Challan" : "Paid"}</Btn>
+                  </div>
+
+                  {/* expanded detail */}
+                  {isOpen && (
+                    <div className="bg-ink-50/70 border-t border-ink-100 px-4 py-4 anim-fade-in">
+                      <div className="grid md:grid-cols-2 gap-5">
+                        <div>
+                          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Challan · {rec ? challanNo(state.feeRecords, rec.id) : "—"}</h3>
+                          {rec ? (
+                            <div className="rounded-[10px] border border-ink-150 bg-white divide-y divide-ink-100 text-[12.5px]">
+                              <Row k="Monthly fee" v={fmtMoney(rec.baseFee, cur)} />
+                              {rec.lateFee > 0 && <Row k="Late fee" v={fmtMoney(rec.lateFee, cur)} />}
+                              {rec.adjustment !== 0 && <Row k="Adjustment" v={`${rec.adjustment > 0 ? "+" : "−"}${fmtMoney(Math.abs(rec.adjustment), cur)}`} />}
+                              <Row k="Paid" v={`− ${fmtMoney(paidOf(state.payments, rec.id), cur)}`} green />
+                              <Row k="Balance" v={fmtMoney(balanceOf(rec, state.payments), cur)} bold red={bal > 0} />
+                              <Row k="Due date" v={fmtDate(rec.dueDate, df)} />
+                            </div>
+                          ) : <p className="text-[12.5px] text-ink-400">No fee record for {periodLabel(period)}.</p>}
+                          <div className="flex gap-2 mt-3 flex-wrap">
+                            {rec && bal > 0 && <Btn size="sm" variant="gold" icon="send" onClick={() => ui.openSlip({ kind: "challan", recordId: rec.id })}>Send Challan</Btn>}
+                            {rec && <Btn size="sm" variant="outline" icon={rec.waived ? "refresh" : "minus"} onClick={() => setWaiveRec(rec.id)}>{rec.waived ? "Remove Waiver" : "Waive Fee"}</Btn>}
+                            <Btn size="sm" variant="outline" icon="eye" onClick={() => nav("student", { id: s.id })}>Profile</Btn>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Receipts for this month</h3>
+                          {pays.length === 0 ? <p className="text-[12.5px] text-ink-400">No payments recorded for {periodLabel(period)}.</p> : (
+                            <div className="space-y-2">
+                              {pays.map((p) => (
+                                <div key={p.id} className={`rounded-[10px] border bg-white px-3 py-2.5 ${p.state === "voided" ? "opacity-50 border-ink-150" : "border-ink-150"}`}>
+                                  <div className="flex items-center gap-2">
+                                    <Icon name="receipt" size={15} className={p.state === "voided" ? "text-ink-300" : "text-mint-600"} />
+                                    <span className="font-mono text-[11.5px] font-bold text-ink-800 tnum">{p.receiptNo}</span>
+                                    <span className="flex-1" />
+                                    <span className={`font-mono text-[12.5px] font-bold tnum ${p.state === "voided" ? "text-ink-400 line-through" : "text-mint-700"}`}>{fmtMoney(p.amount, cur)}</span>
+                                    {p.state === "voided" && <Badge tone="slate">Voided</Badge>}
                                   </div>
-                                  <div>
-                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-2.5">Receipts for this month</h3>
-                                    {pays.length === 0 ? <p className="text-[12.5px] text-ink-400">No payments recorded for {periodLabel(period)}.</p> : (
-                                      <div className="space-y-2">
-                                        {pays.map((p) => (
-                                          <div key={p.id} className={`flex items-center gap-2.5 rounded-[10px] border bg-white px-3 py-2 ${p.state === "voided" ? "opacity-50 border-ink-150" : "border-ink-150"}`}>
-                                            <Icon name="receipt" size={15} className={p.state === "voided" ? "text-ink-300" : "text-mint-600"} />
-                                            <span className="font-mono text-[11.5px] font-bold text-ink-800 tnum">{p.receiptNo}</span>
-                                            <span className="text-[11.5px] text-ink-400 tnum">{fmtDate(p.date, df)}</span>
-                                            <span className="text-[11px] text-ink-400">{p.method}</span>
-                                            <span className="flex-1" />
-                                            <span className={`font-mono text-[12px] font-bold tnum ${p.state === "voided" ? "text-ink-400 line-through" : "text-mint-700"}`}>{fmtMoney(p.amount, cur)}</span>
-                                            {p.state === "voided" ? <Badge tone="slate">Voided</Badge> : (
-                                              <>
-                                                <IconBtn name="send" label="Send receipt" onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} />
-                                                <IconBtn name="edit" label="Edit payment" onClick={() => ui.openPayment(s.id, p.id)} />
-                                                <IconBtn name="trash" label="Void payment" onClick={() => setVoidAsk(p.id)} />
-                                              </>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <span className="text-[11px] text-ink-400 tnum">{fmtDate(p.date, df)} · {p.method}</span>
+                                    <span className="flex-1" />
+                                    {p.state !== "voided" && (
+                                      <>
+                                        <IconBtn name="send" label="Send receipt" onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} />
+                                        <IconBtn name="edit" label="Edit payment" onClick={() => ui.openPayment(s.id, p.id)} />
+                                        <IconBtn name="trash" label="Void payment" onClick={() => setVoidAsk(p.id)} />
+                                      </>
                                     )}
                                   </div>
                                 </div>
-                              </td>
-                            </tr>
+                              ))}
+                            </div>
                           )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -232,47 +214,25 @@ export default function Fees() {
           {receipts.length === 0 ? (
             <EmptyState icon="receipt" title="No receipts this month" message="Every payment creates a small receipt you can WhatsApp instantly." action={<Btn variant="gold" icon="plus" onClick={() => ui.openPayment()}>Record Payment</Btn>} />
           ) : (
-            <div className="overflow-x-auto scroll-thin">
-              <table className="w-full table-fixed border-collapse text-left align-middle min-w-[820px]">
-                <colgroup>
-                  <col className="w-[110px]" />  {/* receipt no */}
-                  <col />                        {/* student (flex) */}
-                  <col className="w-[124px]" />  {/* date */}
-                  <col className="w-[170px]" />  {/* method */}
-                  <col className="w-[120px]" />  {/* amount */}
-                  <col className="w-[110px]" />  {/* for month */}
-                  <col className="w-[104px]" />  {/* send */}
-                </colgroup>
-                <thead className="bg-ink-50">
-                  <tr className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-400 border-b border-ink-100">
-                    <th className="pl-4 pr-3 py-3">Receipt</th>
-                    <th className="px-3 py-3">Student</th>
-                    <th className="px-3 py-3">Date</th>
-                    <th className="px-3 py-3">Method</th>
-                    <th className="px-3 py-3 text-right">Amount</th>
-                    <th className="px-3 py-3">For Month</th>
-                    <th className="px-4 py-3 text-right">Send</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink-100">
-                  {receipts.map((p) => {
-                    const rec = state.feeRecords.find((r) => r.id === p.feeRecordId);
-                    return (
-                      <tr key={p.id} className="hover:bg-gold-50/40 transition-colors">
-                        <td className="pl-4 pr-3 py-3"><button onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} className="font-mono text-[12.5px] font-bold text-ink-900 hover:text-mint-700 tnum whitespace-nowrap">{p.receiptNo}</button></td>
-                        <td className="px-3 py-3 text-[14px] font-bold text-ink-900 truncate">{nameOf(p.studentId)}</td>
-                        <td className="px-3 py-3 text-[12.5px] font-semibold text-ink-600 tnum whitespace-nowrap">{fmtDate(p.date, df)}</td>
-                        <td className="px-3 py-3 text-[12.5px] text-ink-500 truncate">{p.method}{p.reference ? ` · ${p.reference}` : ""}</td>
-                        <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold text-mint-600 tnum whitespace-nowrap">{fmtMoney(p.amount, cur)}</td>
-                        <td className="px-3 py-3 text-[12.5px] text-ink-500 whitespace-nowrap">{rec ? periodLabel(rec.period, true) : "—"}</td>
-                        <td className="px-4 py-3 text-right">
-                          <Btn size="sm" variant="wa" icon="whatsapp" onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })}>Send</Btn>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="divide-y divide-ink-100">
+              {receipts.map((p) => {
+                const rec = state.feeRecords.find((r) => r.id === p.feeRecordId);
+                return (
+                  <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gold-50/40 transition-colors">
+                    <button onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })} className="w-10 h-10 rounded-[10px] bg-mint-50 border border-mint-600/20 text-mint-600 flex items-center justify-center shrink-0 press" aria-label={`Open ${p.receiptNo}`}>
+                      <Icon name="receipt" size={17} />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-bold text-ink-900 truncate">{nameOf(p.studentId)}</p>
+                      <p className="text-[11.5px] text-ink-400 tnum truncate mt-0.5">
+                        <span className="font-mono font-bold text-ink-600">{p.receiptNo}</span> · {fmtDate(p.date, df)} · {p.method}{rec ? ` · for ${periodLabel(rec.period, true)}` : ""}
+                      </p>
+                    </div>
+                    <span className="font-mono text-[14.5px] font-bold text-mint-600 tnum whitespace-nowrap">{fmtMoney(p.amount, cur)}</span>
+                    <Btn size="sm" variant="wa" icon="whatsapp" onClick={() => ui.openSlip({ kind: "receipt", paymentId: p.id })}>Send</Btn>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

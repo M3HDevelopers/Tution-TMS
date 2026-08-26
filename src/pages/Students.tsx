@@ -136,99 +136,89 @@ export default function Students() {
             action={state.students.length === 0 ? <Btn variant="gold" icon="plus" onClick={() => ui.openStudentForm()}>Add Student</Btn> : <Btn variant="outline" onClick={() => { setQ(""); setCls("all"); setStatus("all"); setFeeFilter("all"); }}>Clear Filters</Btn>} />
         </div>
       ) : (
-        <div className="card overflow-hidden anim-fade-up" style={{ animationDelay: "60ms" }}>
-          <div className="overflow-x-auto scroll-thin">
-            {/* Fixed column architecture — every header and every row shares these exact column tracks */}
-            <table className="w-full table-fixed border-collapse text-left align-middle min-w-[1200px]">
-              <colgroup>
-                <col className="w-[48px]" />   {/* checkbox */}
-                <col />                        {/* student (flex) */}
-                <col className="w-[126px]" />  {/* class */}
-                <col className="w-[198px]" />  {/* guardian */}
-                <col className="w-[120px]" />  {/* monthly fee */}
-                <col className="w-[120px]" />  {/* paid amount */}
-                <col className="w-[120px]" />  {/* due amount */}
-                <col className="w-[132px]" />  {/* due date */}
-                <col className="w-[126px]" />  {/* status */}
-                <col className="w-[158px]" />  {/* actions */}
-              </colgroup>
-              <thead className="bg-ink-50">
-                <tr className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-400 border-b border-ink-100">
-                  <th className="pl-4 pr-1 py-3">
-                    <input type="checkbox" className="accent-[#0e1830] w-3.5 h-3.5 cursor-pointer" checked={selected.length === rows.length && rows.length > 0} onChange={(e) => setSelected(e.target.checked ? rows.map((r) => r.s.id) : [])} aria-label="Select all" />
-                  </th>
-                  <th className="px-3 py-3">Student</th>
-                  <th className="px-3 py-3">Class</th>
-                  <th className="px-3 py-3">Guardian</th>
-                  <th className="px-3 py-3 text-right">Monthly Fee</th>
-                  <th className="px-3 py-3 text-right">Paid Amount</th>
-                  <th className="px-3 py-3 text-right">Due Amount</th>
-                  <th className="px-3 py-3">Due Date</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {rows.map(({ s, rec, paid, due, st }, i) => {
-                  const guards = state.guardians.filter((g) => g.studentId === s.id).sort((a, b) => Number(b.primary) - Number(a.primary));
-                  const g0 = guards[0];
-                  return (
-                    <tr key={s.id} className="hover:bg-gold-50/40 transition-colors anim-fade-up" style={{ animationDelay: `${Math.min(i * 22, 260)}ms` }}>
-                      <td className="pl-4 pr-1 py-3">
-                        <input type="checkbox" className="accent-[#0e1830] w-3.5 h-3.5 cursor-pointer" checked={selected.includes(s.id)} onChange={() => toggleSel(s.id)} aria-label={`Select ${s.name}`} />
-                      </td>
-                      <td className="px-3 py-3 min-w-0">
-                        <button onClick={() => nav("student", { id: s.id })} className="flex items-center gap-3 text-left group w-full min-w-0">
-                          {s.photo ? <img src={s.photo} alt="" className="w-10 h-10 rounded-[10px] object-cover shrink-0" /> : <Avatar name={s.name} size={40} />}
-                          <span className="min-w-0">
-                            <span className="block text-[15px] font-bold leading-snug text-ink-900 group-hover:text-gold-700 transition-colors truncate">{s.name}</span>
-                            <span className="block text-[12px] text-ink-400 truncate mt-0.5">{s.grade} · fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</span>
-                          </span>
-                        </button>
-                      </td>
-                      <td className="px-3 py-3"><Badge tone="teal" className="max-w-full truncate">{s.grade}</Badge></td>
-                      <td className="px-3 py-3 min-w-0">
-                        {!g0 ? <span className="text-[12px] text-flame-600 font-bold">No number!</span> : (
-                          <span className="block min-w-0">
-                            <span className="block text-[12.5px] font-semibold text-ink-700 truncate">{g0.name}{guards.length > 1 && <span className="text-ink-400 font-normal"> +{guards.length - 1}</span>}</span>
-                            <span className="block font-mono text-[11.5px] text-ink-400 tnum truncate mt-0.5">{g0.phone}{g0.whatsapp ? "" : " · no WA"}</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-[13.5px] font-semibold text-ink-900 tnum whitespace-nowrap">{fmtMoney(s.monthlyFee, cur)}</td>
-                      <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold tnum whitespace-nowrap">
-                        {rec ? <span className="text-mint-600">{fmtMoney(paid, cur)}</span> : <span className="text-ink-300">—</span>}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-[13.5px] font-bold tnum whitespace-nowrap">
-                        {rec ? (due > 0 ? <span className="text-flame-600">{fmtMoney(due, cur)}</span> : <span className="text-mint-600">{fmtMoney(0, cur)}</span>) : <span className="text-ink-300">—</span>}
-                      </td>
-                      <td className="px-3 py-3 text-[12.5px] font-semibold text-ink-600 tnum whitespace-nowrap">{rec ? fmtDate(rec.dueDate, df) : "—"}</td>
-                      <td className="px-3 py-3">{st ? <FeeStatusBadge status={st} /> : <Badge tone="slate">New</Badge>}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <IconBtn name="wallet" label="Record payment (opens here)" onClick={() => ui.openPayment(s.id)} />
-                          <IconBtn name="slips" label={due > 0 ? "Send challan" : "Challan not needed (paid)"} onClick={() => {
-                            if (due <= 0) { toast.push(`${s.name} is fully paid — no challan needed.`, "warn"); return; }
-                            const open = state.feeRecords.filter((r) => r.studentId === s.id).sort((a, b) => a.period.localeCompare(b.period)).find((r) => balanceOf(r, state.payments) > 0);
-                            if (open) ui.openSlip({ kind: "challan", recordId: open.id });
-                          }} />
-                          <IconBtn name="edit" label="Edit student" onClick={() => ui.openStudentForm({ editId: s.id })} />
-                          <IconBtn name="eye" label="Open profile" onClick={() => nav("student", { id: s.id })} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 stagger">
+            {rows.map(({ s, rec, paid, due, st }) => {
+              const guards = state.guardians.filter((g) => g.studentId === s.id).sort((a, b) => Number(b.primary) - Number(a.primary));
+              const g0 = guards[0];
+              return (
+                <div key={s.id} className="card overflow-hidden card-hover">
+                  {/* head — tap to open profile */}
+                  <div onClick={() => nav("student", { id: s.id })} className="flex items-center gap-3 px-4 pt-3.5 pb-3 cursor-pointer">
+                    <input type="checkbox" onClick={(e) => e.stopPropagation()} className="accent-[#0e1830] w-4 h-4 shrink-0 cursor-pointer" checked={selected.includes(s.id)} onChange={() => toggleSel(s.id)} aria-label={`Select ${s.name}`} />
+                    {s.photo ? <img src={s.photo} alt="" className="w-11 h-11 rounded-[11px] object-cover shrink-0" /> : <Avatar name={s.name} size={44} />}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[15.5px] font-bold leading-tight text-ink-900 truncate">{s.name}</p>
+                      <p className="text-[11.5px] text-ink-400 mt-0.5 truncate">
+                        <Badge tone="teal" className="mr-1.5">{s.grade}</Badge> fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}
+                      </p>
+                    </div>
+                    {st ? <FeeStatusBadge status={st} /> : <Badge tone="slate">New</Badge>}
+                  </div>
+
+                  {/* mini ledger — sab amounts ek hi nazar mein */}
+                  <div className="mx-4 rounded-[10px] border border-ink-100 bg-ink-50/60 grid grid-cols-4 divide-x divide-ink-100">
+                    <div className="px-2.5 py-2">
+                      <span className="block text-[9px] font-bold uppercase tracking-[0.08em] text-ink-400">Monthly</span>
+                      <span className="block font-mono text-[12.5px] font-bold text-ink-900 tnum mt-0.5 truncate">{fmtMoney(s.monthlyFee, cur)}</span>
+                    </div>
+                    <div className="px-2.5 py-2">
+                      <span className="block text-[9px] font-bold uppercase tracking-[0.08em] text-ink-400">Paid</span>
+                      <span className="block font-mono text-[12.5px] font-bold text-mint-600 tnum mt-0.5 truncate">{rec ? fmtMoney(paid, cur) : "—"}</span>
+                    </div>
+                    <div className="px-2.5 py-2">
+                      <span className="block text-[9px] font-bold uppercase tracking-[0.08em] text-ink-400">Due</span>
+                      <span className={`block font-mono text-[12.5px] font-bold tnum mt-0.5 truncate ${rec && due > 0 ? "text-flame-600" : "text-mint-600"}`}>{rec ? fmtMoney(due, cur) : "—"}</span>
+                    </div>
+                    <div className="px-2.5 py-2">
+                      <span className="block text-[9px] font-bold uppercase tracking-[0.08em] text-ink-400">Due Date</span>
+                      <span className="block text-[12px] font-bold text-ink-700 tnum mt-0.5 truncate">{rec ? fmtDate(rec.dueDate, df) : "—"}</span>
+                    </div>
+                  </div>
+
+                  {/* guardian */}
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 mt-3 bg-ink-50/40 border-y border-ink-100">
+                    <Icon name={g0?.whatsapp ? "whatsapp" : "phone"} size={15} className={g0 ? (g0.whatsapp ? "text-[#128c5e]" : "text-ink-400") : "text-flame-500"} />
+                    {!g0 ? (
+                      <span className="text-[12px] font-bold text-flame-600">No parent number saved — add one to send slips</span>
+                    ) : (
+                      <span className="flex-1 min-w-0 flex items-baseline gap-2">
+                        <span className="text-[12.5px] font-semibold text-ink-700 truncate">{g0.name}</span>
+                        <span className="font-mono text-[11.5px] text-ink-400 tnum whitespace-nowrap">{g0.phone}</span>
+                        {guards.length > 1 && <Badge tone="slate">+{guards.length - 1}</Badge>}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* actions */}
+                  <div className="grid grid-cols-4 gap-1.5 px-3 py-2.5">
+                    <MiniAction icon="wallet" label="Pay" onClick={() => ui.openPayment(s.id)} />
+                    <MiniAction icon="slips" label={due > 0 ? "Challan" : "Paid"} muted={due <= 0} onClick={() => {
+                      if (due <= 0) { toast.push(`${s.name} is fully paid — no challan needed.`, "warn"); return; }
+                      const open = state.feeRecords.filter((r) => r.studentId === s.id).sort((a, b) => a.period.localeCompare(b.period)).find((r) => balanceOf(r, state.payments) > 0);
+                      if (open) ui.openSlip({ kind: "challan", recordId: open.id });
+                    }} />
+                    <MiniAction icon="edit" label="Edit" onClick={() => ui.openStudentForm({ editId: s.id })} />
+                    <MiniAction icon="eye" label="Profile" onClick={() => nav("student", { id: s.id })} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="px-4 py-2.5 bg-ink-50/60 border-t border-ink-100 flex items-center justify-between">
-            <span className="text-[11.5px] font-semibold text-ink-400 tnum">{rows.length} student{rows.length === 1 ? "" : "s"} · {periodLabel(period)} figures</span>
-            <span className="text-[11.5px] font-semibold text-ink-400">Scroll sideways on small screens →</span>
-          </div>
-        </div>
+          <p className="text-center text-[11.5px] font-semibold text-ink-400 mt-4 tnum">{rows.length} student{rows.length === 1 ? "" : "s"} · figures for {periodLabel(period)}</p>
+        </>
       )}
       {num(0) === 0 && null}
     </div>
+  );
+}
+
+function MiniAction({ icon, label, onClick, muted }: { icon: string; label: string; onClick: () => void; muted?: boolean }) {
+  return (
+    <button onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-1 h-[54px] rounded-[10px] border transition-all duration-150 press ${muted ? "border-ink-100 bg-ink-50/60 text-ink-300" : "border-ink-150 bg-white text-ink-600 hover:border-gold-500/60 hover:text-gold-700 hover:bg-gold-50/60"}`}>
+      <Icon name={icon} size={16} />
+      <span className="text-[10px] font-bold tracking-wide">{label}</span>
+    </button>
   );
 }

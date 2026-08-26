@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Badge, Btn, EmptyState, Icon, PageHead, ProgressBar, Stat, Tabs, TSelect } from "../components/ui";
+import { Avatar, Badge, Btn, EmptyState, Icon, PageHead, ProgressBar, Stat, Tabs, TSelect } from "../components/ui";
 import { agingBuckets, balanceOf, monthCollected, periodStats, studentOutstanding } from "../lib/fee";
 import { useStore } from "../lib/store";
 import { currentPeriod, daysBetween, downloadText, fmtDate, fmtMoney, lastNPeriods, monthKeyOf, naturalCompare, periodLabel, toCSV, todayISO } from "../lib/utils";
@@ -99,25 +99,23 @@ export default function Reports() {
               </div>
             </div>
             <div className="card overflow-hidden">
-              <div className="overflow-x-auto scroll-thin max-h-[440px] overflow-y-auto">
-                <table className="w-full text-left min-w-[560px]">
-                  <thead className="sticky top-0 bg-ink-50 z-10"><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
-                    <th className="pl-4 py-2.5 font-bold">Receipt</th><th className="py-2.5 font-bold">Student</th><th className="py-2.5 font-bold">Date</th><th className="py-2.5 font-bold">Method</th><th className="py-2.5 pr-4 font-bold text-right">Amount</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-ink-100">
-                    {paymentsInPeriod.map((p) => (
-                      <tr key={p.id} className="hover:bg-gold-50/40">
-                        <td className="pl-4 py-2.5 font-mono text-[11.5px] font-semibold text-ink-500 tnum">{p.receiptNo}</td>
-                        <td className="py-2.5 text-[13px] font-semibold text-ink-900">{nameOf(p.studentId)}</td>
-                        <td className="py-2.5 text-[12px] text-ink-500 tnum">{fmtDate(p.date, df)}</td>
-                        <td className="py-2.5 text-[12px] text-ink-500">{p.method}</td>
-                        <td className="py-2.5 pr-4 text-right font-mono text-[12.5px] font-bold text-mint-600 tnum">{fmtMoney(p.amount, cur)}</td>
-                      </tr>
-                    ))}
-                    {paymentsInPeriod.length === 0 && <tr><td colSpan={5} className="py-10 text-center text-[13px] text-ink-400">No collections recorded in {periodLabel(period)}.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
+              <div className="px-4 py-2.5 bg-ink-50/60 border-b border-ink-100 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-400">Payment Log</div>
+              {paymentsInPeriod.length === 0 ? (
+                <p className="py-10 text-center text-[13px] text-ink-400">No collections recorded in {periodLabel(period)}.</p>
+              ) : (
+                <div className="divide-y divide-ink-100 max-h-[440px] overflow-y-auto scroll-thin">
+                  {paymentsInPeriod.map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gold-50/40 transition-colors">
+                      <span className="w-8 h-8 rounded-[8px] bg-gold-50 border border-gold-600/20 text-gold-600 flex items-center justify-center shrink-0"><Icon name="wallet" size={14} /></span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13.5px] font-bold text-ink-900 truncate">{nameOf(p.studentId)}</p>
+                        <p className="text-[11px] text-ink-400 tnum truncate mt-0.5"><span className="font-mono font-bold text-ink-600">{p.receiptNo}</span> · {fmtDate(p.date, df)} · {p.method}</p>
+                      </div>
+                      <span className="font-mono text-[13.5px] font-bold text-mint-600 tnum whitespace-nowrap">{fmtMoney(p.amount, cur)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -138,24 +136,23 @@ export default function Reports() {
             {duesRows.length === 0 ? (
               <EmptyState icon="check" title="No dues outstanding" message="Every active student is settled. Enjoy the moment." />
             ) : (
-              <div className="overflow-x-auto scroll-thin">
-                <table className="w-full text-left min-w-[640px]">
-                  <thead><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-y border-ink-100 bg-ink-50/60">
-                    <th className="pl-5 py-2.5 font-bold">Student</th><th className="py-2.5 font-bold">Class</th><th className="py-2.5 font-bold text-right">Outstanding</th><th className="py-2.5 font-bold">Oldest Due</th><th className="py-2.5 font-bold">Age</th><th className="py-2.5 pr-5 font-bold">Bucket</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-ink-100">
-                    {duesRows.map((r) => (
-                      <tr key={r.s.id} className="hover:bg-gold-50/40">
-                        <td className="pl-5 py-2.5 text-[13px] font-semibold text-ink-900">{r.s.name}</td>
-                        <td className="py-2.5 text-[12px] text-ink-500">{r.s.grade}</td>
-                        <td className="py-2.5 text-right font-mono font-bold text-[12.5px] text-flame-600 tnum">{fmtMoney(r.out, cur)}</td>
-                        <td className="py-2.5 text-[12px] text-ink-500 tnum">{fmtDate(r.oldest, df)}</td>
-                        <td className="py-2.5 text-[12px] font-semibold text-ink-700 tnum">{r.days > 0 ? `${r.days} days` : "not overdue"}</td>
-                        <td className="py-2.5 pr-5"><Badge tone={r.days > 15 ? "red" : r.days > 7 ? "amber" : r.days > 0 ? "gold" : "slate"}>{r.days > 15 ? "16+" : r.days > 7 ? "8–15" : r.days > 0 ? "1–7" : "Current"}</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {duesRows.map((r) => (
+                  <div key={r.s.id} className="card p-4 card-hover">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={r.s.name} size={38} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14.5px] font-bold text-ink-900 truncate">{r.s.name}</p>
+                        <p className="text-[11.5px] text-ink-400 mt-0.5"><Badge tone="teal" className="mr-1.5">{r.s.grade}</Badge> oldest due {fmtDate(r.oldest, df)}</p>
+                      </div>
+                      <Badge tone={r.days > 15 ? "red" : r.days > 7 ? "amber" : r.days > 0 ? "gold" : "slate"}>{r.days > 15 ? "16+ days" : r.days > 7 ? "8–15 days" : r.days > 0 ? "1–7 days" : "Current"}</Badge>
+                    </div>
+                    <div className="mt-3 rounded-[10px] bg-flame-50/70 border border-flame-100 px-3.5 py-2.5 flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-flame-700">Outstanding</span>
+                      <span className="font-mono text-[16px] font-bold text-flame-600 tnum">{fmtMoney(r.out, cur)}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -172,30 +169,24 @@ export default function Reports() {
             </TSelect>
             <Btn variant="outline" icon="download" onClick={() => exportCSV(`attendance-${attMonth}`, [["Student", "Class", "Present", "Absent", "Leave", "Days", "Percent"], ...attRows.map((r) => [r.s.name, r.s.grade, r.p, r.a, r.l, r.total, r.pct ?? ""])])}>Export CSV</Btn>
           </div>
-          <div className="card overflow-hidden">
-            <div className="overflow-x-auto scroll-thin">
-              <table className="w-full text-left min-w-[620px]">
-                <thead><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100 bg-ink-50/60">
-                  <th className="pl-5 py-2.5 font-bold">Student</th><th className="py-2.5 font-bold text-center">Present</th><th className="py-2.5 font-bold text-center">Absent</th><th className="py-2.5 font-bold text-center">Leave</th><th className="py-2.5 font-bold w-52">Rate</th>
-                </tr></thead>
-                <tbody className="divide-y divide-ink-100">
-                  {attRows.map((r) => (
-                    <tr key={r.s.id} className="hover:bg-gold-50/40">
-                      <td className="pl-5 py-2.5"><span className="text-[13px] font-semibold text-ink-900">{r.s.name}</span> <span className="text-[11px] text-ink-400">{r.s.grade}</span></td>
-                      <td className="py-2.5 text-center font-mono text-[12.5px] font-semibold text-mint-600 tnum">{r.p}</td>
-                      <td className="py-2.5 text-center font-mono text-[12.5px] font-semibold text-flame-600 tnum">{r.a}</td>
-                      <td className="py-2.5 text-center font-mono text-[12px] text-ink-400 tnum">{r.l}</td>
-                      <td className="py-2.5 pr-5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1"><ProgressBar value={r.pct ?? 0} max={100} tone={r.pct === null ? "gold" : r.pct >= 80 ? "green" : r.pct >= 60 ? "gold" : "red"} /></div>
-                          <span className="font-mono text-[11.5px] font-bold w-10 text-right tnum">{r.pct === null ? "—" : `${r.pct}%`}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="card divide-y divide-ink-100">
+            {attRows.length === 0 ? (
+              <p className="py-10 text-center text-[13px] text-ink-400">No students in this selection.</p>
+            ) : attRows.map((r) => (
+              <div key={r.s.id} className="px-4 py-3 hover:bg-gold-50/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Avatar name={r.s.name} size={34} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13.5px] font-bold text-ink-900 truncate">{r.s.name} <span className="text-[11px] font-semibold text-ink-400">· {r.s.grade}</span></p>
+                    <p className="text-[11px] text-ink-400 tnum mt-0.5">
+                      <span className="text-mint-600 font-bold">{r.p} present</span> · <span className="text-flame-600 font-bold">{r.a} absent</span> · {r.l} leave
+                    </p>
+                  </div>
+                  <span className="font-mono text-[14px] font-bold text-ink-900 tnum">{r.pct === null ? "—" : `${r.pct}%`}</span>
+                </div>
+                <div className="mt-2 pl-[46px]"><ProgressBar value={r.pct ?? 0} max={100} tone={r.pct === null ? "gold" : r.pct >= 80 ? "green" : r.pct >= 60 ? "gold" : "red"} /></div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -206,25 +197,19 @@ export default function Reports() {
             <h3 className="font-display font-bold text-[15px] text-ink-900">Student Register · {state.students.length} records</h3>
             <Btn size="sm" variant="outline" icon="download" onClick={() => exportCSV("student-register", [["ID", "Name", "Level", "Class", "School", "Monthly Fee", "Fee Day", "Joining", "Status", "Guardians"], ...state.students.map((s) => [s.id, s.name, s.level, s.grade, s.school ?? "", s.monthlyFee, s.feeDueDay, s.joiningDate ?? "", s.status, state.guardians.filter((g) => g.studentId === s.id).map((g) => `${g.name} ${g.phone}`).join("; ")])])}>Export CSV</Btn>
           </div>
-          <div className="overflow-x-auto scroll-thin max-h-[520px] overflow-y-auto">
-            <table className="w-full text-left min-w-[720px]">
-              <thead className="sticky top-0 bg-ink-50 z-10"><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
-                <th className="pl-5 py-2.5 font-bold">Name</th><th className="py-2.5 font-bold">Class</th><th className="py-2.5 font-bold">Level</th><th className="py-2.5 font-bold text-right">Fee</th><th className="py-2.5 font-bold">Fee Day</th><th className="py-2.5 font-bold">Joined</th><th className="py-2.5 pr-5 font-bold">Status</th>
-              </tr></thead>
-              <tbody className="divide-y divide-ink-100">
-                {state.students.map((s) => (
-                  <tr key={s.id} className="hover:bg-gold-50/40">
-                    <td className="pl-5 py-2.5 text-[13px] font-semibold text-ink-900">{s.name}</td>
-                    <td className="py-2.5 text-[12px] text-ink-500">{s.grade}</td>
-                    <td className="py-2.5 text-[12px] text-ink-500">{s.level}</td>
-                    <td className="py-2.5 text-right font-mono text-[12px] font-semibold tnum">{fmtMoney(s.monthlyFee, cur)}</td>
-                    <td className="py-2.5 text-[12px] text-ink-500 tnum">{s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}</td>
-                    <td className="py-2.5 text-[12px] text-ink-500 tnum">{s.joiningDate ? fmtDate(s.joiningDate, df) : "—"}</td>
-                    <td className="py-2.5 pr-5"><Badge tone={s.status === "active" ? "green" : "amber"}>{s.status}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-ink-100 max-h-[520px] overflow-y-auto scroll-thin">
+            {state.students.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gold-50/40 transition-colors">
+                <Avatar name={s.name} size={34} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13.5px] font-bold text-ink-900 truncate">{s.name}</p>
+                  <p className="text-[11px] text-ink-400 tnum truncate mt-0.5">{s.level} · fee day {s.feeDueDay === 1 ? "1st" : `${s.feeDueDay}th`}{s.joiningDate ? ` · joined ${fmtDate(s.joiningDate, df)}` : ""}</p>
+                </div>
+                <Badge tone="teal">{s.grade}</Badge>
+                <span className="font-mono text-[12.5px] font-bold text-ink-900 tnum whitespace-nowrap">{fmtMoney(s.monthlyFee, cur)}</span>
+                <Badge tone={s.status === "active" ? "green" : "amber"}>{s.status}</Badge>
+              </div>
+            ))}
           </div>
         </div>
       )}

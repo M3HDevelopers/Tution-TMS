@@ -231,31 +231,28 @@ export default function Attendance() {
             </TSelect>
           </div>
         </div>
-        <div className="overflow-x-auto scroll-thin">
-          <table className="w-full text-left min-w-[640px]">
-            <thead><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
-              <th className="py-2 font-bold">Student</th><th className="py-2 font-bold">Class</th><th className="py-2 font-bold text-center">Present</th><th className="py-2 font-bold text-center">Absent</th><th className="py-2 font-bold text-center">Leave</th><th className="py-2 font-bold w-56">Attendance</th>
-            </tr></thead>
-            <tbody className="divide-y divide-ink-100">
-              {summaryRows.map(({ s, p, a, l, pct, total }) => (
-                <tr key={s.id} className="hover:bg-gold-50/40 transition-colors">
-                  <td className="py-2.5"><div className="flex items-center gap-2.5"><Avatar name={s.name} size={28} /><span className="text-[13px] font-semibold text-ink-900">{s.name}</span>{total === 0 && <Badge tone="slate">No records</Badge>}</div></td>
-                  <td className="py-2.5 text-[12px] text-ink-500">{s.grade}</td>
-                  <td className="py-2.5 text-center font-mono text-[12.5px] font-semibold text-mint-600 tnum">{p}</td>
-                  <td className="py-2.5 text-center font-mono text-[12.5px] font-semibold text-flame-600 tnum">{a}</td>
-                  <td className="py-2.5 text-center font-mono text-[12px] text-ink-400 tnum">{l}</td>
-                  <td className="py-2.5 pr-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1"><ProgressBar value={pct ?? 0} max={100} tone={pct === null ? "gold" : pct >= 80 ? "green" : pct >= 60 ? "gold" : "red"} /></div>
-                      <span className="font-mono text-[11.5px] font-bold text-ink-700 w-10 text-right tnum">{pct === null ? "—" : `${pct}%`}</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {summaryRows.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-[13px] text-ink-400">Nothing to summarise for {monthTitle(summaryMonth)}.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        {summaryRows.length === 0 ? (
+          <p className="py-8 text-center text-[13px] text-ink-400">Nothing to summarise for {monthTitle(summaryMonth)}.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {summaryRows.map(({ s, p, a, l, pct, total }) => (
+              <div key={s.id} className="rounded-[11px] border border-ink-100 bg-white px-3.5 py-3 hover:border-ink-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Avatar name={s.name} size={32} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13.5px] font-bold text-ink-900 truncate">{s.name} <span className="text-[11px] font-semibold text-ink-400">· {s.grade}</span></p>
+                    <p className="text-[11px] text-ink-400 tnum mt-0.5">
+                      <span className="text-mint-600 font-bold">{p} present</span> · <span className="text-flame-600 font-bold">{a} absent</span> · {l} leave
+                      {total === 0 && <Badge tone="slate" className="ml-1.5">No records</Badge>}
+                    </p>
+                  </div>
+                  <span className="font-mono text-[15px] font-bold text-ink-900 tnum">{pct === null ? "—" : `${pct}%`}</span>
+                </div>
+                <div className="mt-2.5 pl-[44px]"><ProgressBar value={pct ?? 0} max={100} tone={pct === null ? "gold" : pct >= 80 ? "green" : pct >= 60 ? "gold" : "red"} /></div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
       <span className="hidden">{periodLabel(summaryMonth)}</span>
     </div>
