@@ -210,8 +210,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem(SESSION_KEY);
   };
 
-  const loadDemo = () => setState(buildDemoData());
-  const resetDemo = () => setState(buildDemoData());
+  const loadDemo = () => {
+    try {
+      setState(buildDemoData());
+      // demo load karte hi auto-login — seedha dashboard par pahuncho
+      setSession(true);
+      write(SESSION_KEY, true);
+    } catch (e) {
+      console.error("Demo data load failed:", e);
+      window.dispatchEvent(new Event("tms-storage-error"));
+    }
+  };
+  const resetDemo = () => {
+    try {
+      setState(buildDemoData());
+    } catch (e) {
+      console.error("Demo reset failed:", e);
+    }
+  };
   const importAll = (data: DataState) => setState(data);
 
   const value = useMemo(
