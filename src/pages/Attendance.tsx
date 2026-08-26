@@ -119,9 +119,12 @@ export default function Attendance() {
         </label>
         <span className="text-[12px] text-ink-400 tnum">{fmtDate(date, df)} · {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][wd]}</span>
         <div className="flex-1" />
-        <Btn variant="outline" icon="check" onClick={() => markAll()} disabled={blocked || allStudents.length === 0}>Mark All Present</Btn>
-        <Btn variant="outline" icon="x" onClick={() => setDraft({})} disabled={blocked || markedCount === 0}>Clear</Btn>
-        <Btn variant="gold" icon="save" onClick={save} disabled={blocked || allStudents.length === 0 || !dirty}>Save Attendance</Btn>
+        {/* buttons — mobile: [Mark All | Clear] / [Save full-width], desktop: ek line */}
+        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:gap-2.5">
+          <Btn variant="outline" icon="check" onClick={() => markAll()} disabled={blocked || allStudents.length === 0}>Mark All Present</Btn>
+          <Btn variant="outline" icon="x" onClick={() => setDraft({})} disabled={blocked || markedCount === 0}>Clear</Btn>
+          <Btn variant="gold" icon="save" onClick={save} disabled={blocked || allStudents.length === 0 || !dirty} className="col-span-2 sm:col-span-1">Save Attendance</Btn>
+        </div>
       </div>
 
       {blocked && (

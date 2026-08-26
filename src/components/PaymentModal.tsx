@@ -267,7 +267,7 @@ export default function PaymentModal({ open, onClose, studentId, paymentId, onSe
               </div>
             )}
           </div>
-          <div className="flex justify-center gap-2.5 mt-5">
+          <div className="grid grid-cols-2 gap-2.5 mt-5 sm:flex sm:justify-center [&>*]:min-w-0">
             <Btn variant="outline" onClick={onClose}>Later</Btn>
             <Btn variant="wa" icon="send" onClick={() => onSendReceipt?.(saved.ids[0])}>
               {savedPayments.length > 1 ? "Send First Receipt" : "Send Receipt Now"}

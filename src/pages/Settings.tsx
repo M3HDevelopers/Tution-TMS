@@ -180,7 +180,7 @@ export default function Settings() {
         <section className="card p-5 anim-fade-up" style={{ animationDelay: "190ms" }}>
           <h2 className="font-display font-bold text-[16px] text-ink-900 mb-1.5 flex items-center gap-2"><Icon name="save" size={17} className="text-gold-600" /> Your Data</h2>
           <p className="text-[12px] text-ink-400 mb-4">Everything lives in this browser's storage. Export a backup regularly — it takes one click.</p>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap gap-2.5 [&>button]:grow [&>button]:min-w-0 [&>button]:basis-32 sm:[&>button]:grow-0 sm:[&>button]:basis-auto">
             <Btn variant="gold" icon="download" onClick={exportBackup}>Export Backup</Btn>
             <Btn variant="outline" icon="upload" onClick={() => importRef.current?.click()}>Import Backup</Btn>
             <input ref={importRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { onBackupFile(e.target.files?.[0]); e.target.value = ""; }} />
@@ -221,7 +221,7 @@ export default function Settings() {
               ))}
             </div>
             <p className="text-[12px] font-semibold text-flame-600 mb-4">Your current data will be overwritten. This cannot be undone.</p>
-            <div className="flex justify-end gap-2.5">
+            <div className="flex flex-col gap-2.5 [&>button]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>button]:w-auto">
               <Btn variant="outline" onClick={() => setImportPreview(null)}>Cancel</Btn>
               <Btn variant="danger" icon="upload" onClick={doImport}>Replace All Data</Btn>
             </div>

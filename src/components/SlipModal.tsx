@@ -138,7 +138,7 @@ export default function SlipModal({ target, onClose }: { target: SlipTarget | nu
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex flex-wrap gap-2 mt-3 [&>*]:grow [&>*]:min-w-0 [&>*]:basis-32 sm:[&>*]:grow-0 sm:[&>*]:basis-auto">
             <Btn variant="outline" icon="download" onClick={download} disabled={!image}>Download Image</Btn>
             {loggedRef.current && <span className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-mint-700 anim-tick px-2"><Icon name="check" size={15} /> Sent — saved to history</span>}
           </div>

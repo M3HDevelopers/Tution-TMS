@@ -100,28 +100,31 @@ export default function Students() {
       {/* toolbar */}
       <div className="card p-3.5 mb-4 flex flex-wrap items-center gap-2.5 anim-fade-up">
         <SearchBox value={q} onChange={setQ} placeholder="Search name, ID, phone, school…" className="flex-1 min-w-[220px]" />
-        <TSelect value={cls} onChange={(e) => setCls(e.target.value)} className="!w-auto min-w-36">
-          <option value="all">All classes</option>
-          {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-        </TSelect>
-        <TSelect value={status} onChange={(e) => setStatus(e.target.value)} className="!w-auto min-w-30">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="all">All</option>
-        </TSelect>
-        <TSelect value={feeFilter} onChange={(e) => setFeeFilter(e.target.value)} className="!w-auto min-w-34">
-          <option value="all">Any fee status</option>
-          <option value="dues">Has dues</option>
-          <option value="clear">Fully clear</option>
-        </TSelect>
-        <TSelect value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="!w-auto min-w-36">
-          <option value="name">Sort: Name</option>
-          <option value="joining">Sort: Joining date</option>
-          <option value="due">Sort: Due amount</option>
-          <option value="fee">Sort: Monthly fee</option>
-        </TSelect>
+        {/* filters — mobile par 2×2 barabar grid, desktop par ek line */}
+        <div className="grid grid-cols-2 gap-2 w-full lg:w-auto lg:flex lg:items-center lg:gap-2.5">
+          <TSelect value={cls} onChange={(e) => setCls(e.target.value)} className="!w-full lg:!w-auto">
+            <option value="all">All classes</option>
+            {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+          </TSelect>
+          <TSelect value={status} onChange={(e) => setStatus(e.target.value)} className="!w-full lg:!w-auto">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="all">All</option>
+          </TSelect>
+          <TSelect value={feeFilter} onChange={(e) => setFeeFilter(e.target.value)} className="!w-full lg:!w-auto">
+            <option value="all">Any fee status</option>
+            <option value="dues">Has dues</option>
+            <option value="clear">Fully clear</option>
+          </TSelect>
+          <TSelect value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="!w-full lg:!w-auto">
+            <option value="name">Sort: Name</option>
+            <option value="joining">Sort: Joining date</option>
+            <option value="due">Sort: Due amount</option>
+            <option value="fee">Sort: Monthly fee</option>
+          </TSelect>
+        </div>
         {selected.length > 0 && (
-          <span className="flex items-center gap-2 anim-fade-in">
+          <span className="flex items-center gap-2 anim-fade-in w-full sm:w-auto [&>button]:grow sm:[&>button]:grow-0">
             <Badge tone="navy">{selected.length} selected</Badge>
             <Btn size="sm" variant="outline" onClick={() => setManyStatus("inactive")}>Mark Inactive</Btn>
             <Btn size="sm" variant="outline" onClick={() => setManyStatus("active")}>Mark Active</Btn>

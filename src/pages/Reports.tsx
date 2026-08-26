@@ -67,7 +67,7 @@ export default function Reports() {
 
       {tab === "collection" && (
         <div className="space-y-5 anim-fade-up">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 [&>*]:grow [&>*]:min-w-0 [&>*]:basis-32 sm:[&>*]:grow-0 sm:[&>*]:basis-auto">
             <TSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="!w-auto min-w-44">
               {lastNPeriods(12).map((p) => <option key={p} value={p}>{periodLabel(p)}</option>)}
             </TSelect>
@@ -161,7 +161,7 @@ export default function Reports() {
 
       {tab === "attendance" && (
         <div className="space-y-4 anim-fade-up">
-          <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex flex-wrap gap-2.5 items-center [&>*]:grow [&>*]:min-w-0 [&>*]:basis-32 sm:[&>*]:grow-0 sm:[&>*]:basis-auto">
             <input type="month" value={attMonth} onChange={(e) => setAttMonth(e.target.value)} className="h-9.5 px-3 rounded-[9px] border border-ink-200 text-[13px] font-semibold" />
             <TSelect value={attClass} onChange={(e) => setAttClass(e.target.value)} className="!w-auto min-w-44">
               <option value="all">All classes</option>
