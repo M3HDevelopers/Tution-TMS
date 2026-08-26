@@ -37,41 +37,44 @@ export default function Slips() {
 
       {tab === "challans" && (
         <div className="card overflow-hidden anim-fade-up">
-          <div className="px-5 py-3.5 bg-ink-50/60 border-b border-ink-100 flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-ink-500">{monthRecords.filter((x) => x.bal > 0).length} challan(s) still to send · {monthRecords.filter((x) => x.bal <= 0).length} already settled</span>
+          <div className="px-4 py-3 bg-ink-50/60 border-b border-ink-100 flex items-center justify-between gap-2">
+            <span className="text-[11.5px] font-semibold text-ink-500 tnum">{monthRecords.filter((x) => x.bal > 0).length} to send · {monthRecords.filter((x) => x.bal <= 0).length} settled</span>
             <Badge tone="gold">{periodLabel(period)}</Badge>
           </div>
           {monthRecords.length === 0 ? (
             <EmptyState icon="slips" title="No challans this month" message="Add active students — challans generate automatically at the start of each month." />
           ) : (
-            <div className="overflow-x-auto scroll-thin">
-              <table className="w-full text-left min-w-[760px]">
-                <thead><tr className="text-[10.5px] uppercase tracking-[0.1em] text-ink-400 border-b border-ink-100">
-                  <th className="pl-5 py-3 font-bold">Challan No.</th><th className="py-3 font-bold">Student</th><th className="py-3 font-bold">Class</th><th className="py-3 font-bold text-right">Payable</th><th className="py-3 font-bold">Due Date</th><th className="py-3 font-bold">Status</th><th className="py-3 pr-5 font-bold text-right">Action</th>
-                </tr></thead>
-                <tbody className="divide-y divide-ink-100">
-                  {monthRecords.map(({ r, s, bal, st }) => {
-                    const shared = sentChallans.some((x) => x.refId === r.id);
-                    return (
-                      <tr key={r.id} className="hover:bg-gold-50/40 transition-colors">
-                        <td className="pl-5 py-3 font-mono text-[12.5px] font-bold text-ink-900 tnum">{challanNo(state.feeRecords, r.id)}</td>
-                        <td className="py-3 text-[13.5px] font-bold text-ink-900">{s!.name}{shared && <Badge tone="green" className="ml-2">Shared</Badge>}</td>
-                        <td className="py-3 text-[12px] text-ink-500">{s!.grade}</td>
-                        <td className="py-3 text-right font-mono text-[12.5px] font-bold text-ink-900 tnum">{fmtMoney(bal, cur)}</td>
-                        <td className="py-3 text-[12px] text-ink-500 tnum">{fmtDate(r.dueDate, df)}</td>
-                        <td className="py-3"><Badge tone={st === "paid" ? "green" : st === "overdue" ? "red" : st === "partial" ? "amber" : "gold"}>{st === "paid" ? "Paid" : st === "overdue" ? "Overdue" : st === "partial" ? "Partial" : st === "waived" ? "Waived" : "Due"}</Badge></td>
-                        <td className="py-3 pr-5 text-right">
-                          {bal > 0 ? (
-                            <Btn size="sm" variant="gold" icon="send" onClick={() => ui.openSlip({ kind: "challan", recordId: r.id })}>Send Fee Slip</Btn>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-mint-600"><Icon name="check" size={14} /> Settled — no slip needed</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="divide-y divide-ink-100">
+              {monthRecords.map(({ r, s, bal, st }) => {
+                const shared = sentChallans.some((x) => x.refId === r.id);
+                const settled = bal <= 0;
+                return (
+                  <div key={r.id} className="px-4 py-3.5 hover:bg-gold-50/40 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-9 h-9 rounded-[9px] flex items-center justify-center shrink-0 ${settled ? "bg-mint-50 text-mint-600" : "bg-gold-50 text-gold-600"}`}>
+                        <Icon name={settled ? "check" : "slips"} size={16} />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14.5px] font-bold text-ink-900 truncate">{s!.name}
+                          {shared && <Badge tone="green" className="ml-2">Shared</Badge>}
+                        </p>
+                        <p className="text-[11px] text-ink-400 tnum mt-0.5"><span className="font-mono font-bold text-ink-600">{challanNo(state.feeRecords, r.id)}</span> · {s!.grade}</p>
+                      </div>
+                      <Badge tone={st === "paid" ? "green" : st === "overdue" ? "red" : st === "partial" ? "amber" : "gold"}>{st === "paid" ? "Paid" : st === "overdue" ? "Overdue" : st === "partial" ? "Partial" : st === "waived" ? "Waived" : "Due"}</Badge>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2.5 pl-[46px]">
+                      <span className="text-[11px] font-semibold text-ink-400">Payable <span className="font-mono text-[13px] font-bold text-ink-900 tnum ml-1">{fmtMoney(bal, cur)}</span></span>
+                      <span className="text-[11px] font-semibold text-ink-400 tnum">Due <span className="text-[12px] font-bold text-ink-700 ml-1">{fmtDate(r.dueDate, df)}</span></span>
+                      <span className="flex-1" />
+                      {settled ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-mint-600">Settled — no slip needed</span>
+                      ) : (
+                        <Btn size="sm" variant="gold" icon="send" onClick={() => ui.openSlip({ kind: "challan", recordId: r.id })}>Send Fee Slip</Btn>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
